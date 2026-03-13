@@ -1,0 +1,78 @@
+name: Build Sing-box SRS Rules (Pro)
+
+# 触发条件：每天定时运行，或在网页端手动点击运行
+on:
+  schedule:
+    - cron: '30 22 * * *' # 为了避免和原来的任务完全同时运行冲突，这里我把时间错开了半小时
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 获取当前时间作为版本号
+        id: date
+        run: echo "release_tag=$(date +'%Y%m%d%H%M')-pro" >> $GITHUB_OUTPUT
+
+      - name: 配置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: 下载并安装最新版 sing-box
+        run: |
+          echo "正在获取最新版 sing-box..."
+          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4)
+          wget -qO sing-box.tar.gz $DOWNLOAD_URL
+          tar -xzf sing-box.tar.gz
+          mv sing-box-*-linux-amd64/sing-box ./sing-box
+          chmod +x ./sing-box
+
+      - name: 运行核心构建引擎
+        run: |
+          python src/builder.py
+
+      - name: 编译三个等级的 SRS 二进制规则
+        run: |
+          ./sing-box rule-set convert --type adguard rules/lite.txt -o rules/lite.srs
+          ./sing-box rule-set convert --type adguard rules/full.txt -o rules/full.srs
+          ./sing-box rule-set convert --type adguard rules/extreme.txt -o rules/extreme.srs
+
+      - name: 运行渲染引擎并自动更新仓库 README
+        run: |
+          python src/generator.py
+          
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add README.md
+          git commit -m "docs: 自动更新 README 数据面板 [skip ci]" || echo "没有检测到数据变化，跳过提交"
+          git push
+
+      - name: 发布 Release 成果
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.date.outputs.release_tag }}
+          name: Sing-box 去广告规则集 Pro (${{ steps.date.outputs.release_tag }})
+          files: |
+            rules/lite.txt
+            rules/lite.srs
+            rules/full.txt
+            rules/full.srs
+            rules/extreme.txt
+            rules/extreme.srs
+          body: "完全遵循 sing-box 1.10.0+ 官方规范构建的顶级去广告规则集。包含 Lite、Full、Extreme 三个版本。"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
