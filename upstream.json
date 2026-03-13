@@ -1,31 +1,7 @@
 {
   "upstream_rules": [
     {
-      "name": "AWAvenue-Ads-Rule",
-      "url": "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt",
-      "type": "ad",
-      "tier": "full",
-      "format": "adguard",
-      "enabled": true
-    },
-    {
-      "name": "AdAway-Hosts",
-      "url": "https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
-      "type": "ad",
-      "tier": "lite",
-      "format": "hosts",
-      "enabled": true
-    },
-    {
-      "name": "EasyList",
-      "url": "https://easylist-downloads.adblockplus.org/easylist.txt",
-      "type": "ad",
-      "tier": "lite",
-      "format": "adguard",
-      "enabled": true
-    },
-    {
-      "name": "AdGuard-Base-Optimized",
+      "name": "AdGuard-Base",
       "url": "https://filters.adtidy.org/android/filters/2_optimized.txt",
       "type": "ad",
       "tier": "lite",
@@ -41,14 +17,6 @@
       "enabled": true
     },
     {
-      "name": "AdGuard-Tracking-Protection",
-      "url": "https://filters.adtidy.org/android/filters/3_optimized.txt",
-      "type": "tracking",
-      "tier": "full",
-      "format": "adguard",
-      "enabled": true
-    },
-    {
       "name": "AdGuard-Chinese",
       "url": "https://filters.adtidy.org/android/filters/224_optimized.txt",
       "type": "ad",
@@ -57,18 +25,58 @@
       "enabled": true
     },
     {
-      "name": "AdGuard-Experimental",
-      "url": "https://filters.adtidy.org/android/filters/10_optimized.txt",
+      "name": "OISD-Basic",
+      "url": "https://small.oisd.nl/domainswild",
       "type": "ad",
-      "tier": "extreme",
+      "tier": "lite",
       "format": "adguard",
+      "enabled": true
+    },
+    {
+      "name": "EasyList",
+      "url": "https://easylist-downloads.adblockplus.org/easylist.txt",
+      "type": "ad",
+      "tier": "full",
+      "format": "adguard",
+      "enabled": true
+    },
+    {
+      "name": "AdGuard-Tracking-Protection",
+      "url": "https://filters.adtidy.org/android/filters/3_optimized.txt",
+      "type": "tracking",
+      "tier": "full",
+      "format": "adguard",
+      "enabled": true
+    },
+    {
+      "name": "AWAvenue-Ads-Rule",
+      "url": "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt",
+      "type": "ad",
+      "tier": "full",
+      "format": "adguard",
+      "enabled": true
+    },
+    {
+      "name": "StevenBlack-Hosts",
+      "url": "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+      "type": "ad",
+      "tier": "full",
+      "format": "hosts",
       "enabled": true
     },
     {
       "name": "217heidai-Adblock-DNS-Lite",
       "url": "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdnslite.txt",
       "type": "ad",
-      "tier": "lite",
+      "tier": "full",
+      "format": "adguard",
+      "enabled": true
+    },
+    {
+      "name": "OISD-Big",
+      "url": "https://big.oisd.nl/domainswild",
+      "type": "ad",
+      "tier": "extreme",
       "format": "adguard",
       "enabled": true
     },
@@ -81,23 +89,23 @@
       "enabled": true
     },
     {
-      "name": "Hostlists-Filter-24",
-      "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_24.txt",
+      "name": "anti-AD",
+      "url": "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-adguard.txt",
       "type": "ad",
-      "tier": "full",
+      "tier": "extreme",
       "format": "adguard",
       "enabled": true
     },
     {
-      "name": "Hostlists-Filter-1",
-      "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt",
+      "name": "AdGuard-Experimental",
+      "url": "https://filters.adtidy.org/android/filters/10_optimized.txt",
       "type": "ad",
-      "tier": "full",
+      "tier": "extreme",
       "format": "adguard",
       "enabled": true
     },
     {
-      "name": "Hostlists-Filter-11",
+      "name": "Hostlists-Filter-11-Malicious",
       "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_11.txt",
       "type": "malicious",
       "tier": "full",
@@ -105,49 +113,9 @@
       "enabled": true
     },
     {
-      "name": "Hostlists-Filter-59",
-      "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_59.txt",
-      "type": "ad",
-      "tier": "full",
-      "format": "adguard",
-      "enabled": true
-    },
-    {
-      "name": "Hostlists-Filter-39",
+      "name": "Hostlists-Filter-39-Tracking",
       "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_39.txt",
       "type": "tracking",
-      "tier": "full",
-      "format": "adguard",
-      "enabled": true
-    },
-    {
-      "name": "Hostlists-Filter-6",
-      "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_6.txt",
-      "type": "ad",
-      "tier": "full",
-      "format": "adguard",
-      "enabled": true
-    },
-    {
-      "name": "Hostlists-Filter-29",
-      "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt",
-      "type": "ad",
-      "tier": "extreme",
-      "format": "adguard",
-      "enabled": true
-    },
-    {
-      "name": "Hostlists-Filter-30",
-      "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_30.txt",
-      "type": "ad",
-      "tier": "extreme",
-      "format": "adguard",
-      "enabled": true
-    },
-    {
-      "name": "Hostlists-Filter-50",
-      "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_50.txt",
-      "type": "ad",
       "tier": "full",
       "format": "adguard",
       "enabled": true
@@ -155,10 +123,24 @@
   ],
   "whitelist": [
     {
-      "name": "Global-Allowlist",
-      "url": "https://raw.githubusercontent.com/privacy-protection-tools/dead-horse/master/anti-ad-white-for-dnsmasq.conf",
+      "name": "AdGuard-DNS-Filter-Whitelist",
+      "url": "https://raw.githubusercontent.com/AdguardTeam/AdguardSDNSFilter/master/Filters/exclusions.txt",
+      "type": "allow",
+      "format": "adguard",
+      "enabled": true
+    },
+    {
+      "name": "anti-AD-Whitelist",
+      "url": "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-white-for-dnsmasq.conf",
       "type": "allow",
       "format": "dnsmasq",
+      "enabled": true
+    },
+    {
+      "name": "AWAvenue-Whitelist",
+      "url": "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Whitelist.txt",
+      "type": "allow",
+      "format": "adguard",
       "enabled": true
     }
   ]
