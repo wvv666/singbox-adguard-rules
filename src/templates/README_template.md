@@ -1,31 +1,32 @@
-# 🛡️ Sing-box 终极全能去广告规则库
+# 🛡️ 终极全能版 Sing-box 去广告规则集
 
-本项目由 GitHub Actions 引擎全自动驱动，每日聚合 **19+** 个顶级开源规则源，经过极速去重、冲突检测与深度清洗，专为 **sing-box** 网络层代理编译优化。
+这是一个高度自动化的企业级 `sing-box` 规则聚合仓库。融合了数十个顶级开源广告拦截、隐私保护及防恶意软件规则源，通过云端强力去重、格式严格规范化以及智能冲突化解，为您提供三种不同强度的无忧订阅选项。
 
-> ⏱️ **最后数据更新**: {{ UPDATE_TIME }}
+> ⏱️ **最后数据更新时间**：{{ UPDATE_TIME }} (北京/台北时间)
 
-## 📊 实时数据看板
+---
 
-基于最新的上游数据源，本次构建成功生成了以下三个等级的规则集：
+## 📊 实时规则数据面板
 
-| 规则分级 | 适用场景 | 构建说明 | 最终有效规则数 |
+在最近一次的云端自动化构建中，本引擎成功拦截并化解了 **{{ CONFLICTS_RESOLVED }}** 处规则冲突。最终提炼出的有效拦截规则统计如下：
+
+| 规则级别 | 侧重定位 | 包含的原始分类 | 最终纯净规则数 |
 | :--- | :--- | :--- | :---: |
-| 🟢 **Lite (轻量版)** | 基础去广告，几乎无误杀 | 适合路由/网关全局拦截，含 EasyList 等基础源 | **{{ LITE_COUNT }}** |
-| 🔵 **Full (推荐版)** | 日常主力，强力净化 | 包含 Lite + 隐私防追踪 + 恶意/钓鱼域名拦截 | **{{ FULL_COUNT }}** |
-| 🔴 **Extreme (极限版)** | 零容忍拦截，可能有误杀 | 包含 Full + 实验性规则 + 激进拦截规则 | **{{ EXTREME_COUNT }}** |
+| 🟢 **Lite 版 (轻量/基础)** | 适合所有设备，主打国内常见广告拦截与零误杀 | 纯广告拦截 | **{{ LITE_TOTAL }}** |
+| 🔵 **Full 版 (完整/推荐)** | 日常主力推荐，强化隐私防护与基础恶意网站屏蔽 | 广告 + 隐私追踪 + 恶意软件 | **{{ FULL_TOTAL }}** |
+| 🔴 **Extreme 版 (激进/极限)** | 极客专属，追求极限网络洁癖，包含强力规则 | 上述全部 + 激进规则 | **{{ EXTREME_TOTAL }}** |
 
-*⚡ 智能引擎启动：本次构建自动应用全局白名单，成功化解了 **{{ CONFLICTS_RESOLVED }}** 处规则冲突，保障网络畅通。*
+---
 
-## 🚀 订阅与使用方法 (Sing-box)
+## 🚀 订阅与使用指南
 
-请在你的 Sing-box 客户端配置文件 `config.json` 的 `route.rule_set` 部分，添加以下配置（以 Full 推荐版为例）：
+请在您的 `sing-box` 客户端的配置中，按需选取以下 **SRS 二进制格式** 规则集的直链进行配置。
 
-```json
-{
-  "tag": "ad-block",
-  "type": "remote",
-  "format": "binary",
-  "url": "[https://github.com/你的GitHub用户名/你的仓库名/releases/latest/download/full.srs](https://github.com/你的GitHub用户名/你的仓库名/releases/latest/download/full.srs)",
-  "download_detour": "direct"
-}
-(注意：请将 url 中的用户名和仓库名替换为你自己的)
+*(注意：请将下方链接中的 `YOUR_GITHUB_USERNAME` 和 `YOUR_REPO_NAME` 替换为您自己的 GitHub 用户名和仓库名)*
+
+* **Lite 版直链**: `https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/releases/latest/download/lite.srs`
+* **Full 版直链**: `https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/releases/latest/download/full.srs`
+* **Extreme 版直链**: `https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/releases/latest/download/extreme.srs`
+
+---
+*本数据面板由 GitHub Actions 自动生成。*
