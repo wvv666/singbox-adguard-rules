@@ -1,0 +1,57 @@
+name: Build Sing-box SRS Rules
+
+# 配置触发条件
+on:
+  schedule:
+    - cron: '0 22 * * *' # 每天 UTC 时间 22:00 (北京/台北时间早上 6:00) 自动运行
+  workflow_dispatch:     # 允许你在 GitHub 网页上手动点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # 使用最新的 Ubuntu 云端环境
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 获取当前时间作为版本号
+        id: date
+        run: echo "release_tag=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
+
+      - name: 下载并安装 sing-box
+        run: |
+          # 从 GitHub API 获取最新版 sing-box (Linux amd64) 的下载链接并下载
+          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4)
+          wget -qO sing-box.tar.gz $DOWNLOAD_URL
+          
+          # 解压文件并提取 sing-box 执行文件
+          tar -xzf sing-box.tar.gz
+          mv sing-box-*-linux-amd64/sing-box ./sing-box
+          chmod +x ./sing-box
+          
+          # 验证安装版本
+          ./sing-box version
+
+      - name: 下载上游 AdGuard 规则
+        run: |
+          # 请将下面的 URL 替换为你想要的 AdGuard 规则下载地址
+          # 这里以 AdGuard 官方 DNS 过滤器为例
+          UPSTREAM_URL="https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_15_DnsFilter/filter.txt"
+          curl -L -o adguard_rules.txt $UPSTREAM_URL
+
+      - name: 转换为 sing-box SRS 格式
+        run: |
+          # 使用原生命令将 txt 转换为 srs
+          ./sing-box rule-set convert --type adguard adguard_rules.txt -o adguard.srs
+
+      - name: 创建 Release 并上传 SRS 文件
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.date.outputs.release_tag }} # 使用时间戳作为版本号
+          name: AdGuard Rules (${{ steps.date.outputs.release_tag }})
+          files: adguard.srs
+          body: "此版本由 GitHub Actions 自动拉取上游规则并编译生成。"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
