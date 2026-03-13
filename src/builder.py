@@ -1,4 +1,4 @@
-import json, urllib.request, re, os, time, concurrent.futures, ipaddress
+import json, urllib.request, re, os, time, concurrent.futures, ipaddress, sys
 from publicsuffixlist import PublicSuffixList
 
 # --- 初始化 ---
@@ -66,11 +66,27 @@ def parse_rule(line, is_whitelist=False):
         if domain in ('localhost', 'local'): 
             return None, None
         
-        # --- 修复：使用 publicsuffix 方法 ---
+        # --- 修复：使用正确的公共后缀检查方法 ---
+        # 方法1: 使用 publicsuffix() 方法（推荐）
         # 如果域名本身就是公共后缀（如 com, org, co.uk），则跳过
-        if psl.publicsuffix(domain) == domain:
-            return None, None
-            
+        try:
+            public_suffix = psl.publicsuffix(domain)
+            if public_suffix == domain:
+                return None, None
+        except Exception as e:
+            print(f"⚠️ 公共后缀检查失败 {domain}: {e}")
+            # 如果 publicsuffix 方法失败，尝试其他方法
+        
+        # 方法2: 使用 is_public() 方法（如果可用）
+        # 注意：不同版本的库方法名可能不同
+        try:
+            # 检查 psl 是否有 is_public 方法
+            if hasattr(psl, 'is_public') and callable(psl.is_public):
+                if psl.is_public(domain):
+                    return None, None
+        except:
+            pass
+        
         return 'domain', domain
     
     return 'raw', line
@@ -91,13 +107,27 @@ def fetch_worker(source, is_whitelist=False):
     return {"domains": domains, "raws": raws, "source": source}
 
 def main():
-    with open('upstream.json', 'r') as f: 
-        config = json.load(f)
+    # 增强错误处理
+    try:
+        with open('upstream.json', 'r') as f: 
+            config = json.load(f)
+    except FileNotFoundError:
+        print("❌ 错误：未找到 upstream.json 配置文件")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"❌ 错误：upstream.json 格式无效：{e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ 错误：读取配置文件失败：{e}")
+        sys.exit(1)
+    
     routing = {}
     tier_raws = {'lite': set(), 'full': set(), 'extreme': set()}
     stats = {"ad": 0, "tracking": 0, "malicious": 0, "allow": 0, "failed": 0}
 
-    all_sources = [(s, False) for s in config['upstream_rules']] + [(s, True) for s in config['whitelist']]
+    all_sources = [(s, False) for s in config.get('upstream_rules', [])] + \
+                  [(s, True) for s in config.get('whitelist', [])]
+    
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         futures = [executor.submit(fetch_worker, s, is_w) for s, is_w in all_sources]
         for f in concurrent.futures.as_completed(futures):
@@ -106,7 +136,12 @@ def main():
                 stats["failed"] += 1
                 continue
             src, d_set, r_set = res['source'], res['domains'], res['raws']
-            prio, stype = src.get('priority', 0), src['type']
+            prio, stype = src.get('priority', 0), src.get('type', 'ad')
+            
+            # 安全的统计更新
+            stats_key = stype if stype in stats else "ad"
+            stats[stats_key] += len(d_set) + len(r_set)
+            
             for d in d_set:
                 if d not in routing or prio > routing[d]['priority']:
                     routing[d] = {
@@ -114,14 +149,48 @@ def main():
                         "priority": prio, 
                         "tier": src.get('tier', 'global')
                     }
+            
             if stype != "allow":
                 target_tiers = {
                     'lite': ['lite', 'full', 'extreme'], 
                     'full': ['full', 'extreme'], 
                     'extreme': ['extreme']
                 }
-                for t in target_tiers.get(src['tier'], []): 
+                for t in target_tiers.get(src.get('tier', 'lite'), ['lite']): 
                     tier_raws[t].update(r_set)
+
+    os.makedirs('rules', exist_ok=True)
+    
+    for t in ['lite', 'full', 'extreme']:
+        allowed_tiers = ['lite']
+        if t == 'full': 
+            allowed_tiers = ['lite', 'full']
+        if t == 'extreme': 
+            allowed_tiers = ['lite', 'full', 'extreme']
+        
+        tier_domains = [d for d, v in routing.items() if v['type'] == 'block' and v['tier'] in allowed_tiers]
+        trie = DomainTrie()
+        compressed = sorted([d for d in sorted(tier_domains, key=lambda x: x.count('.')) if trie.insert_and_check(d)])
+        
+        with open(f'rules/{t}.txt', 'w', encoding='utf-8') as f:
+            for d in compressed: 
+                f.write(f"||{d}^\n")
+            for r in sorted(tier_raws[t]): 
+                f.write(f"{r}\n")
+            for d, v in routing.items(): 
+                if v['type'] == 'allow': 
+                    f.write(f"@@||{d}^\n")
+        
+        stats[f"{t}_total"] = len(compressed) + len(tier_raws[t]) + sum(1 for v in routing.values() if v['type'] == 'allow')
+
+    with open('rules/stats.json', 'w', encoding='utf-8') as f: 
+        json.dump(stats, f, indent=2)
+    
+    print("✅ 构建完成")
+    print(f"📊 统计: {stats}")
+
+if __name__ == '__main__': 
+    main()                    tier_raws[t].update(r_set)
             stats[stype] += len(d_set) + len(r_set)
 
     os.makedirs('rules', exist_ok=True)
