@@ -9,12 +9,15 @@ pure_domain_pattern = re.compile(r'^[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+$')
 dnsmasq_pattern = re.compile(r'^(?:server|address)=/([a-zA-Z0-9.-]+)/')
 
 class DomainTrie:
-    def __init__(self): self.root = {}
+    def __init__(self): 
+        self.root = {}
+    
     def insert_and_check(self, domain):
         parts = domain.split('.')[::-1]
         node = self.root
         for part in parts:
-            if "__end__" in node: return False
+            if "__end__" in node: 
+                return False
             node = node.setdefault(part, {})
         node["__end__"] = True
         return True
@@ -26,45 +29,70 @@ def download_with_retry(url, source_name, retries=3):
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 return resp.read().decode('utf-8', errors='ignore')
-        except: time.sleep(3)
+        except Exception as e:
+            print(f"⚠️ 下载失败 {source_name} (尝试 {i+1}/{retries}): {e}")
+            time.sleep(3)
     print(f"❌ 下载失败: {source_name}")
     return None
 
 def parse_rule(line, is_whitelist=False):
     line = line.strip()
-    if not line or line.startswith(('!', '#')): return None, None
+    if not line or line.startswith(('!', '#')): 
+        return None, None
+    
     domain = None
     if is_whitelist:
         m = dnsmasq_pattern.match(line)
-        if m: domain = m.group(1)
-        elif line.startswith('@@||') and line.endswith('^'): domain = line[4:-1]
+        if m: 
+            domain = m.group(1)
+        elif line.startswith('@@||') and line.endswith('^'): 
+            domain = line[4:-1]
+    
     if not domain:
         for p in [hosts_pattern, strict_domain_pattern, pure_domain_pattern]:
             m = p.match(line)
-            if m: domain = m.group(1); break
+            if m: 
+                domain = m.group(1)
+                break
+    
     if domain:
         domain = domain.lower()
-        try: ipaddress.ip_address(domain); return None, None
-        except: pass
-        if domain in ('localhost', 'local'): return None, None
-        # --- PSL 修复：兼容旧版 API ---
-        if psl.publicsuffix(domain) == domain: return None, None
+        try: 
+            ipaddress.ip_address(domain)
+            return None, None
+        except: 
+            pass
+        
+        if domain in ('localhost', 'local'): 
+            return None, None
+        
+        # --- 修复：使用 publicsuffix 方法 ---
+        # 如果域名本身就是公共后缀（如 com, org, co.uk），则跳过
+        if psl.publicsuffix(domain) == domain:
+            return None, None
+            
         return 'domain', domain
+    
     return 'raw', line
 
 def fetch_worker(source, is_whitelist=False):
-    if not source.get('enabled'): return None
+    if not source.get('enabled'): 
+        return None
     content = download_with_retry(source['url'], source['name'])
-    if not content: return None
+    if not content: 
+        return None
     domains, raws = set(), set()
     for line in content.splitlines():
         rtype, val = parse_rule(line, is_whitelist)
-        if rtype == 'domain': domains.add(val)
-        elif rtype == 'raw': raws.add(val)
+        if rtype == 'domain': 
+            domains.add(val)
+        elif rtype == 'raw': 
+            raws.add(val)
     return {"domains": domains, "raws": raws, "source": source}
 
 def main():
-    with open('upstream.json', 'r') as f: config = json.load(f)
+    with open('upstream.json', 'r') as f: 
+        config = json.load(f)
     routing = {}
     tier_raws = {'lite': set(), 'full': set(), 'extreme': set()}
     stats = {"ad": 0, "tracking": 0, "malicious": 0, "allow": 0, "failed": 0}
@@ -74,53 +102,55 @@ def main():
         futures = [executor.submit(fetch_worker, s, is_w) for s, is_w in all_sources]
         for f in concurrent.futures.as_completed(futures):
             res = f.result()
-            if not res: stats["failed"] += 1; continue
+            if not res: 
+                stats["failed"] += 1
+                continue
             src, d_set, r_set = res['source'], res['domains'], res['raws']
             prio, stype = src.get('priority', 0), src['type']
             for d in d_set:
                 if d not in routing or prio > routing[d]['priority']:
-                    routing[d] = {"type": "allow" if stype == "allow" else "block", "priority": prio, "tier": src.get('tier', 'global')}
+                    routing[d] = {
+                        "type": "allow" if stype == "allow" else "block", 
+                        "priority": prio, 
+                        "tier": src.get('tier', 'global')
+                    }
             if stype != "allow":
-                target_tiers = {'lite': ['lite', 'full', 'extreme'], 'full': ['full', 'extreme'], 'extreme': ['extreme']}
-                for t in target_tiers.get(src['tier'], []): tier_raws[t].update(r_set)
+                target_tiers = {
+                    'lite': ['lite', 'full', 'extreme'], 
+                    'full': ['full', 'extreme'], 
+                    'extreme': ['extreme']
+                }
+                for t in target_tiers.get(src['tier'], []): 
+                    tier_raws[t].update(r_set)
             stats[stype] += len(d_set) + len(r_set)
 
     os.makedirs('rules', exist_ok=True)
     for t in ['lite', 'full', 'extreme']:
         allowed_tiers = ['lite']
-        if t == 'full': allowed_tiers = ['lite', 'full']
-        if t == 'extreme': allowed_tiers = ['lite', 'full', 'extreme']
+        if t == 'full': 
+            allowed_tiers = ['lite', 'full']
+        if t == 'extreme': 
+            allowed_tiers = ['lite', 'full', 'extreme']
         tier_domains = [d for d, v in routing.items() if v['type'] == 'block' and v['tier'] in allowed_tiers]
         trie = DomainTrie()
         compressed = sorted([d for d in sorted(tier_domains, key=lambda x: x.count('.')) if trie.insert_and_check(d)])
         with open(f'rules/{t}.txt', 'w', encoding='utf-8') as f:
-            for d in compressed: f.write(f"||{d}^\n")
-            for r in sorted(tier_raws[t]): f.write(f"{r}\n")
+            for d in compressed: 
+                f.write(f"||{d}^\n")
+            for r in sorted(tier_raws[t]): 
+                f.write(f"{r}\n")
             for d, v in routing.items(): 
-                if v['type'] == 'allow': f.write(f"@@||{d}^\n")
+                if v['type'] == 'allow': 
+                    f.write(f"@@||{d}^\n")
         stats[f"{t}_total"] = len(compressed) + len(tier_raws[t]) + sum(1 for v in routing.values() if v['type'] == 'allow')
 
-    with open('rules/stats.json', 'w', encoding='utf-8') as f: json.dump(stats, f)
+    with open('rules/stats.json', 'w', encoding='utf-8') as f: 
+        json.dump(stats, f, indent=2)
     print("✅ 构建完成")
+    print(f"📊 统计: {stats}")
 
-if __name__ == '__main__': main()
-        
-        stats[f"{t}_total"] = len(compressed) + len(tier_raws[t]) + sum(1 for v in routing.values() if v['type'] == 'allow')
-
-    with open('rules/stats.json', 'w', encoding='utf-8') as f:
-        json.dump(stats, f)
-    print("✅ 仲裁构建彻底完成！")
-
-if __name__ == '__main__': main()
-        )
-        
-        for domain in sorted_domains:
-            if trie.insert_and_check(domain):
-                compressed_domains.add(domain)
-                
-        ruleset[tier]['domains'] = compressed_domains
-        print(f"    [{tier.upper()}] Trie 压缩成果: 剔除 {original_len - len(compressed_domains)} 条冗余子域。")
-
+if __name__ == '__main__': 
+    main()
     # 5. 组装输出
     os.makedirs('rules', exist_ok=True)
     for tier, data in ruleset.items():
