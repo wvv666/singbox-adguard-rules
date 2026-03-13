@@ -1,14 +1,13 @@
 name: Build Sing-box SRS Rules
 
-# 配置触发条件
 on:
   schedule:
-    - cron: '0 22 * * *' # 每天 UTC 时间 22:00 (北京/台北时间早上 6:00) 自动运行
-  workflow_dispatch:     # 允许你在 GitHub 网页上手动点击运行
+    - cron: '0 22 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 使用最新的 Ubuntu 云端环境
+    runs-on: ubuntu-latest
 
     steps:
       - name: 检出代码
@@ -20,37 +19,61 @@ jobs:
 
       - name: 下载并安装 sing-box
         run: |
-          # 从 GitHub API 获取最新版 sing-box (Linux amd64) 的下载链接并下载
           DOWNLOAD_URL=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4)
           wget -qO sing-box.tar.gz $DOWNLOAD_URL
-          
-          # 解压文件并提取 sing-box 执行文件
           tar -xzf sing-box.tar.gz
           mv sing-box-*-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
-          
-          # 验证安装版本
-          ./sing-box version
 
-      - name: 下载上游 AdGuard 规则
+      - name: 下载并合并上游 AdGuard 规则
         run: |
-          # 请将下面的 URL 替换为你想要的 AdGuard 规则下载地址
-          # 这里以 AdGuard 官方 DNS 过滤器为例
-          UPSTREAM_URL="https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_15_DnsFilter/filter.txt"
-          curl -L -o adguard_rules.txt $UPSTREAM_URL
+          echo "开始下载并合并规则..."
+          curl -sL "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt" >> adguard_rules_raw.txt
+          echo -e "\n" >> adguard_rules_raw.txt
+          curl -sL "https://adguardteam.github.io/HostlistsRegistry/assets/filter_24.txt" >> adguard_rules_raw.txt
+          echo -e "\n" >> adguard_rules_raw.txt
+          curl -sL "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" >> adguard_rules_raw.txt
+          echo "规则下载并合并完成！"
+
+      - name: 使用 Python 脚本去重并剔除不支持的规则
+        run: |
+          python3 -c "
+          input_file = 'adguard_rules_raw.txt'
+          output_file = 'adguard_rules_clean.txt'
+          unique_rules = set()
+
+          with open(input_file, 'r', encoding='utf-8') as f:
+              for line in f:
+                  line = line.strip()
+                  # 1. 过滤空行和注释
+                  if not line or line.startswith('!') or line.startswith('#'):
+                      continue
+                  # 2. 过滤网页元素隐藏规则 (sing-box 仅支持网络层/DNS层过滤)
+                  if '##' in line or '#?#' in line:
+                      continue
+                  # 3. 加入集合，自动去重
+                  unique_rules.add(line)
+
+          # 将去重后的纯净规则写入新文件
+          with open(output_file, 'w', encoding='utf-8') as f:
+              for rule in sorted(unique_rules):
+                  f.write(rule + '\n')
+          
+          print(f'✅ 清洗完成！最终保留了 {len(unique_rules)} 条独立规则。')
+          "
 
       - name: 转换为 sing-box SRS 格式
         run: |
-          # 使用原生命令将 txt 转换为 srs
-          ./sing-box rule-set convert --type adguard adguard_rules.txt -o adguard.srs
+          # 注意：这里改用清洗后的 adguard_rules_clean.txt 进行编译
+          ./sing-box rule-set convert --type adguard adguard_rules_clean.txt -o adguard.srs
 
       - name: 创建 Release 并上传 SRS 文件
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.date.outputs.release_tag }} # 使用时间戳作为版本号
-          name: AdGuard Rules (${{ steps.date.outputs.release_tag }})
+          tag_name: ${{ steps.date.outputs.release_tag }}
+          name: 高效纯净版 AdGuard Rules (${{ steps.date.outputs.release_tag }})
           files: adguard.srs
-          body: "此版本由 GitHub Actions 自动拉取上游规则并编译生成。"
+          body: "此版本包含了三大上游规则。已通过 Python 脚本完成深度去重，并剔除了 sing-box 不支持的网页元素过滤规则，以提供最佳性能。"
           draft: false
           prerelease: false
         env:
