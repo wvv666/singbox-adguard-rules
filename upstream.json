@@ -26,7 +26,7 @@
     },
     {
       "name": "OISD-Basic",
-      "url": "https://small.oisd.nl/domainswild",
+      "url": "https://raw.githubusercontent.com/sjlleo/oisd-output/main/full.txt",
       "type": "ad",
       "tier": "lite",
       "format": "adguard",
@@ -74,7 +74,7 @@
     },
     {
       "name": "OISD-Big",
-      "url": "https://big.oisd.nl/domainswild",
+      "url": "https://raw.githubusercontent.com/sjlleo/oisd-output/main/full.txt",
       "type": "ad",
       "tier": "extreme",
       "format": "adguard",
