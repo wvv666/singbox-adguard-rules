@@ -1,175 +1,118 @@
-import json
-import urllib.request
-import re
-import os
-import time
-import concurrent.futures
-import ipaddress  # 新增：原生 IP 地址解析库，绝杀一切伪装成域名的 IP
+import json, urllib.request, re, os, time, concurrent.futures, ipaddress
 from publicsuffixlist import PublicSuffixList
 
-# --- 正则与 PSL 初始化 ---
+# --- 初始化 ---
 psl = PublicSuffixList()
 hosts_pattern = re.compile(r'^(?:127\.0\.0\.1|0\.0\.0\.0|::1)\s+([a-zA-Z0-9.-]+)$')
 strict_domain_pattern = re.compile(r'^\|\|([a-zA-Z0-9.-]+)\^?$')
 pure_domain_pattern = re.compile(r'^[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+$')
-ip_rule_pattern = re.compile(r'^\|\|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\^?$')
 dnsmasq_pattern = re.compile(r'^(?:server|address)=/([a-zA-Z0-9.-]+)/')
 
-class TrieNode:
-    """Trie 树节点"""
-    def __init__(self):
-        self.children = {}
-        self.is_end = False
-
 class DomainTrie:
-    """基于后缀的字典树 (用于极致域名压缩)"""
-    def __init__(self):
-        self.root = TrieNode()
-
+    def __init__(self): self.root = {}
     def insert_and_check(self, domain):
-        """倒序插入域名，命中父节点则返回 False，全新型返回 True"""
         parts = domain.split('.')[::-1]
         node = self.root
         for part in parts:
-            if part not in node.children:
-                node.children[part] = TrieNode()
-            node = node.children[part]
-            if node.is_end:
-                return False 
-        node.is_end = True
+            if "__end__" in node: return False
+            node = node.setdefault(part, {})
+        node["__end__"] = True
         return True
 
-def download_with_retry(url, source_name, retries=3, delay=3):
-    """带重试机制的下载函数，支持失效检测"""
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    for attempt in range(retries):
+def download_with_retry(url, source_name, retries=3):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    for i in range(retries):
         try:
-            with urllib.request.urlopen(req, timeout=15) as response:
-                return response.read().decode('utf-8', errors='ignore')
-        except Exception as e:
-            if attempt < retries - 1: time.sleep(delay)
-    print(f"❌ [网络异常] 源已失效: {source_name} ({url})")
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                return resp.read().decode('utf-8', errors='ignore')
+        except: time.sleep(3)
+    print(f"❌ 源失效: {source_name}")
     return None
 
 def parse_rule(line, is_whitelist=False):
-    """双轨制解析器：分离纯域名规则与复杂高级规则"""
     line = line.strip()
-    if not line or line.startswith('!') or line.startswith('#'): return None, None
-    if not is_whitelist:
-        if line.startswith('@@') or '##' in line or '#?#' in line or '$$' in line: return None, None
-    if line in ('||^', '||', '^'): return None, None
-    if ip_rule_pattern.match(line): return None, None
-    
+    if not line or line.startswith(('!', '#')): return None, None
     domain = None
     if is_whitelist:
         m = dnsmasq_pattern.match(line)
         if m: domain = m.group(1)
         elif line.startswith('@@||') and line.endswith('^'): domain = line[4:-1]
-
     if not domain:
-        m = hosts_pattern.match(line)
-        if m: domain = m.group(1)
-        
-    if not domain:
-        m = strict_domain_pattern.match(line)
-        if m: domain = m.group(1)
-        
-    if not domain:
-        if pure_domain_pattern.match(line): domain = line
-
+        for p in [hosts_pattern, strict_domain_pattern, pure_domain_pattern]:
+            m = p.match(line)
+            if m: domain = m.group(1); break
     if domain:
-        # 1. 统一转换为小写 (DNS 大小写不敏感)
         domain = domain.lower()
-        
-        # 2. 忽略保留字
-        if domain in ('localhost', 'broadcasthost', 'local'): return None, None
-        
-        # 3. 极客修复：IP 地址过滤 (防止 Hosts 中出现 0.0.0.0 1.2.3.4 被当成域名)
-        try:
-            ipaddress.ip_address(domain)
-            return None, None # 如果能成功解析为 IP，说明不是域名，直接抛弃！
-        except ValueError:
-            pass # 不是 IP，继续执行域名逻辑
-            
-        # 4. PSL 域名边界防护
-        if psl.is_public_suffix(domain): 
-            return None, None
-            
+        try: ipaddress.ip_address(domain); return None, None
+        except: pass
+        if domain in ('localhost', 'local') or psl.publicsuffix(domain) == domain: return None, None
         return 'domain', domain
-        
     return 'raw', line
 
-def fetch_and_parse(source, is_whitelist=False):
-    """多线程 Worker 函数"""
-    if not source.get('enabled', True): return source, None, set(), set()
+def fetch_worker(source, is_whitelist=False):
+    if not source.get('enabled'): return None
     content = download_with_retry(source['url'], source['name'])
-    if not content: return source, False, set(), set()
-        
-    domains = set()
-    raw_rules = set()
+    if not content: return None
+    domains, raws = set(), set()
     for line in content.splitlines():
-        rtype, value = parse_rule(line, is_whitelist)
-        if rtype == 'domain': domains.add(value)
-        elif rtype == 'raw': raw_rules.add(value)
-            
-    return source, True, domains, raw_rules
+        rtype, val = parse_rule(line, is_whitelist)
+        if rtype == 'domain': domains.add(val)
+        elif rtype == 'raw': raws.add(val)
+    return {"domains": domains, "raws": raws, "source": source}
 
 def main():
-    print("🚀 终极构建引擎启动 (IP级过滤 + 域名标准化 + Trie压缩 + PSL防护)...")
+    with open('upstream.json', 'r') as f: config = json.load(f)
     
-    with open('upstream.json', 'r', encoding='utf-8') as f:
-        config = json.load(f)
+    # 权重仲裁表: {domain: {"type": "allow/block", "priority": int}}
+    routing = {}
+    tier_raws = {'lite': set(), 'full': set(), 'extreme': set()}
+    stats = {"ad": 0, "tracking": 0, "malicious": 0, "allow": 0, "failed": 0}
 
-    ruleset = {
-        'lite': {'domains': set(), 'raw': set()},
-        'full': {'domains': set(), 'raw': set()},
-        'extreme': {'domains': set(), 'raw': set()}
-    }
-    stats = {"ad": 0, "tracking": 0, "malicious": 0, "allow": 0}
-    failed_sources = []
-
-    # 1. 并发拉取黑名单上游
-    print("⬇️ 正在并发拉取黑名单上游...")
+    all_sources = [(s, False) for s in config['upstream_rules']] + [(s, True) for s in config['whitelist']]
+    
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        futures = [executor.submit(fetch_and_parse, src, False) for src in config.get('upstream_rules', [])]
-        for future in concurrent.futures.as_completed(futures):
-            source, success, domains, raw_rules = future.result()
-            if not source.get('enabled', True): continue
-            if not success:
-                failed_sources.append(source['name'])
-                continue
+        futures = [executor.submit(fetch_worker, s, is_w) for s, is_w in all_sources]
+        for f in concurrent.futures.as_completed(futures):
+            res = f.result()
+            if not res: stats["failed"] += 1; continue
             
-            # 分级合流
-            tier_routing = {
-                'lite': ['lite', 'full', 'extreme'],
-                'full': ['full', 'extreme'],
-                'extreme': ['extreme']
-            }
-            for t in tier_routing.get(source.get('tier', 'extreme'), []):
-                ruleset[t]['domains'].update(domains)
-                ruleset[t]['raw'].update(raw_rules)
-                
-            stats[source['type']] = stats.get(source['type'], 0) + len(domains) + len(raw_rules)
-            print(f"    ✅ [{source['tier'].upper()}] {source['name']} 解析成功: {len(domains) + len(raw_rules)} 条")
+            src, d_set, r_set = res['source'], res['domains'], res['raws']
+            prio = src.get('priority', 0)
+            stype = src['type']
+            
+            for d in d_set:
+                if d not in routing or prio > routing[d]['priority']:
+                    routing[d] = {"type": "allow" if stype == "allow" else "block", "priority": prio, "tier": src.get('tier', 'global')}
+            
+            if stype != "allow":
+                target_tiers = {'lite': ['lite', 'full', 'extreme'], 'full': ['full', 'extreme'], 'extreme': ['extreme']}
+                for t in target_tiers.get(src['tier'], []): tier_raws[t].update(r_set)
+            
+            stats[stype] += len(d_set) + len(r_set)
 
-    # 2. 拉取白名单
-    print("🛡️ 正在拉取白名单...")
-    allow_domains = set()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        futures = [executor.submit(fetch_and_parse, src, True) for src in config.get('whitelist', [])]
-        for future in concurrent.futures.as_completed(futures):
-            source, success, domains, raw_rules = future.result()
-            if success: allow_domains.update(domains)
+    # 分级合流与 Trie 压缩
+    os.makedirs('rules', exist_ok=True)
+    final_stats = {"failed_sources": stats["failed"], "conflicts_resolved": 0, "allow": stats["allow"]}
+    
+    for t in ['lite', 'full', 'extreme']:
+        tier_domains = [d for d, v in routing.items() if v['type'] == 'block' and v['tier'] in (['lite', 'full', 'extreme'] if t == 'extreme' else (['lite', 'full'] if t == 'full' else ['lite']))]
+        
+        trie = DomainTrie()
+        compressed = sorted([d for d in sorted(tier_domains, key=lambda x: x.count('.')) if trie.insert_and_check(d)])
+        
+        with open(f'rules/{t}.txt', 'w') as f:
+            for d in compressed: f.write(f"||{d}^\n")
+            for r in sorted(tier_raws[t]): f.write(f"{r}\n")
+            for d, v in routing.items(): 
+                if v['type'] == 'allow': f.write(f"@@||{d}^\n")
+        
+        final_stats[f"{t}_total"] = len(compressed) + len(tier_raws[t]) + stats["allow"]
 
-    # 3. 冲突剔除
-    print("⚔️ 正在执行规则冲突化解...")
-    conflict_count = len(ruleset['extreme']['domains'].intersection(allow_domains))
-    for tier in ruleset:
-        ruleset[tier]['domains'] -= allow_domains
+    with open('rules/stats.json', 'w') as f: json.dump(final_stats, f)
+    print("✅ 构建完成")
 
-    # 4. 极客级优化：Trie 树极致域名压缩
-    print("🌲 开始执行 Trie 树冗余压缩算法...")
-    for tier in ruleset:
+if __name__ == '__main__': main()
         original_len = len(ruleset[tier]['domains'])
         trie = DomainTrie()
         compressed_domains = set()
