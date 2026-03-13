@@ -1,7 +1,7 @@
 import json, urllib.request, re, os, time, concurrent.futures, ipaddress
 from publicsuffixlist import PublicSuffixList
 
-# --- 初始化匹配规则 ---
+# --- 初始化 ---
 psl = PublicSuffixList()
 hosts_pattern = re.compile(r'^(?:127\.0\.0\.1|0\.0\.0\.0|::1)\s+([a-zA-Z0-9.-]+)$')
 strict_domain_pattern = re.compile(r'^\|\|([a-zA-Z0-9.-]+)\^?$')
@@ -9,7 +9,6 @@ pure_domain_pattern = re.compile(r'^[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+$')
 dnsmasq_pattern = re.compile(r'^(?:server|address)=/([a-zA-Z0-9.-]+)/')
 
 class DomainTrie:
-    """基于后缀的字典树压缩算法"""
     def __init__(self): self.root = {}
     def insert_and_check(self, domain):
         parts = domain.split('.')[::-1]
@@ -45,13 +44,11 @@ def parse_rule(line, is_whitelist=False):
             if m: domain = m.group(1); break
     if domain:
         domain = domain.lower()
-        try: ipaddress.ip_address(domain); return None, None # 跳过 IP
+        try: ipaddress.ip_address(domain); return None, None
         except: pass
         if domain in ('localhost', 'local'): return None, None
-        
-        # --- PSL 修复版：判定是否为公共后缀 ---
+        # --- PSL 修复：兼容旧版 API ---
         if psl.publicsuffix(domain) == domain: return None, None
-        
         return 'domain', domain
     return 'raw', line
 
@@ -67,60 +64,46 @@ def fetch_worker(source, is_whitelist=False):
     return {"domains": domains, "raws": raws, "source": source}
 
 def main():
-    print("🚀 启动权重仲裁构建引擎...")
     with open('upstream.json', 'r') as f: config = json.load(f)
-    
-    routing = {} # 全局路由仲裁表
+    routing = {}
     tier_raws = {'lite': set(), 'full': set(), 'extreme': set()}
     stats = {"ad": 0, "tracking": 0, "malicious": 0, "allow": 0, "failed": 0}
 
     all_sources = [(s, False) for s in config['upstream_rules']] + [(s, True) for s in config['whitelist']]
-    
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         futures = [executor.submit(fetch_worker, s, is_w) for s, is_w in all_sources]
         for f in concurrent.futures.as_completed(futures):
             res = f.result()
             if not res: stats["failed"] += 1; continue
-            
             src, d_set, r_set = res['source'], res['domains'], res['raws']
-            prio = src.get('priority', 0)
-            stype = src['type']
-            
-            # 权重仲裁逻辑
+            prio, stype = src.get('priority', 0), src['type']
             for d in d_set:
                 if d not in routing or prio > routing[d]['priority']:
-                    routing[d] = {
-                        "type": "allow" if stype == "allow" else "block", 
-                        "priority": prio, 
-                        "tier": src.get('tier', 'global')
-                    }
-            
+                    routing[d] = {"type": "allow" if stype == "allow" else "block", "priority": prio, "tier": src.get('tier', 'global')}
             if stype != "allow":
                 target_tiers = {'lite': ['lite', 'full', 'extreme'], 'full': ['full', 'extreme'], 'extreme': ['extreme']}
                 for t in target_tiers.get(src['tier'], []): tier_raws[t].update(r_set)
-            
             stats[stype] += len(d_set) + len(r_set)
 
-    # 产出分级规则
     os.makedirs('rules', exist_ok=True)
     for t in ['lite', 'full', 'extreme']:
-        # 筛选符合当前 Tier 的域名
         allowed_tiers = ['lite']
         if t == 'full': allowed_tiers = ['lite', 'full']
         if t == 'extreme': allowed_tiers = ['lite', 'full', 'extreme']
-        
         tier_domains = [d for d, v in routing.items() if v['type'] == 'block' and v['tier'] in allowed_tiers]
-        
-        # Trie 压缩
         trie = DomainTrie()
         compressed = sorted([d for d in sorted(tier_domains, key=lambda x: x.count('.')) if trie.insert_and_check(d)])
-        
         with open(f'rules/{t}.txt', 'w', encoding='utf-8') as f:
             for d in compressed: f.write(f"||{d}^\n")
             for r in sorted(tier_raws[t]): f.write(f"{r}\n")
-            # 注入全局白名单
             for d, v in routing.items(): 
                 if v['type'] == 'allow': f.write(f"@@||{d}^\n")
+        stats[f"{t}_total"] = len(compressed) + len(tier_raws[t]) + sum(1 for v in routing.values() if v['type'] == 'allow')
+
+    with open('rules/stats.json', 'w', encoding='utf-8') as f: json.dump(stats, f)
+    print("✅ 构建完成")
+
+if __name__ == '__main__': main()
         
         stats[f"{t}_total"] = len(compressed) + len(tier_raws[t]) + sum(1 for v in routing.values() if v['type'] == 'allow')
 
