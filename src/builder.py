@@ -1,7 +1,7 @@
 import json, urllib.request, re, os, time, concurrent.futures, ipaddress
 from publicsuffixlist import PublicSuffixList
 
-# --- 初始化 ---
+# --- 初始化匹配规则 ---
 psl = PublicSuffixList()
 hosts_pattern = re.compile(r'^(?:127\.0\.0\.1|0\.0\.0\.0|::1)\s+([a-zA-Z0-9.-]+)$')
 strict_domain_pattern = re.compile(r'^\|\|([a-zA-Z0-9.-]+)\^?$')
@@ -9,6 +9,7 @@ pure_domain_pattern = re.compile(r'^[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+$')
 dnsmasq_pattern = re.compile(r'^(?:server|address)=/([a-zA-Z0-9.-]+)/')
 
 class DomainTrie:
+    """基于后缀的字典树压缩算法"""
     def __init__(self): self.root = {}
     def insert_and_check(self, domain):
         parts = domain.split('.')[::-1]
@@ -27,7 +28,7 @@ def download_with_retry(url, source_name, retries=3):
             with urllib.request.urlopen(req, timeout=15) as resp:
                 return resp.read().decode('utf-8', errors='ignore')
         except: time.sleep(3)
-    print(f"❌ 源失效: {source_name}")
+    print(f"❌ 下载失败: {source_name}")
     return None
 
 def parse_rule(line, is_whitelist=False):
@@ -44,9 +45,13 @@ def parse_rule(line, is_whitelist=False):
             if m: domain = m.group(1); break
     if domain:
         domain = domain.lower()
-        try: ipaddress.ip_address(domain); return None, None
+        try: ipaddress.ip_address(domain); return None, None # 跳过 IP
         except: pass
-        if domain in ('localhost', 'local') or psl.publicsuffix(domain) == domain: return None, None
+        if domain in ('localhost', 'local'): return None, None
+        
+        # --- PSL 修复版：判定是否为公共后缀 ---
+        if psl.publicsuffix(domain) == domain: return None, None
+        
         return 'domain', domain
     return 'raw', line
 
@@ -62,10 +67,10 @@ def fetch_worker(source, is_whitelist=False):
     return {"domains": domains, "raws": raws, "source": source}
 
 def main():
+    print("🚀 启动权重仲裁构建引擎...")
     with open('upstream.json', 'r') as f: config = json.load(f)
     
-    # 权重仲裁表: {domain: {"type": "allow/block", "priority": int}}
-    routing = {}
+    routing = {} # 全局路由仲裁表
     tier_raws = {'lite': set(), 'full': set(), 'extreme': set()}
     stats = {"ad": 0, "tracking": 0, "malicious": 0, "allow": 0, "failed": 0}
 
@@ -81,9 +86,14 @@ def main():
             prio = src.get('priority', 0)
             stype = src['type']
             
+            # 权重仲裁逻辑
             for d in d_set:
                 if d not in routing or prio > routing[d]['priority']:
-                    routing[d] = {"type": "allow" if stype == "allow" else "block", "priority": prio, "tier": src.get('tier', 'global')}
+                    routing[d] = {
+                        "type": "allow" if stype == "allow" else "block", 
+                        "priority": prio, 
+                        "tier": src.get('tier', 'global')
+                    }
             
             if stype != "allow":
                 target_tiers = {'lite': ['lite', 'full', 'extreme'], 'full': ['full', 'extreme'], 'extreme': ['extreme']}
@@ -91,36 +101,34 @@ def main():
             
             stats[stype] += len(d_set) + len(r_set)
 
-    # 分级合流与 Trie 压缩
+    # 产出分级规则
     os.makedirs('rules', exist_ok=True)
-    final_stats = {"failed_sources": stats["failed"], "conflicts_resolved": 0, "allow": stats["allow"]}
-    
     for t in ['lite', 'full', 'extreme']:
-        tier_domains = [d for d, v in routing.items() if v['type'] == 'block' and v['tier'] in (['lite', 'full', 'extreme'] if t == 'extreme' else (['lite', 'full'] if t == 'full' else ['lite']))]
+        # 筛选符合当前 Tier 的域名
+        allowed_tiers = ['lite']
+        if t == 'full': allowed_tiers = ['lite', 'full']
+        if t == 'extreme': allowed_tiers = ['lite', 'full', 'extreme']
         
+        tier_domains = [d for d, v in routing.items() if v['type'] == 'block' and v['tier'] in allowed_tiers]
+        
+        # Trie 压缩
         trie = DomainTrie()
         compressed = sorted([d for d in sorted(tier_domains, key=lambda x: x.count('.')) if trie.insert_and_check(d)])
         
-        with open(f'rules/{t}.txt', 'w') as f:
+        with open(f'rules/{t}.txt', 'w', encoding='utf-8') as f:
             for d in compressed: f.write(f"||{d}^\n")
             for r in sorted(tier_raws[t]): f.write(f"{r}\n")
+            # 注入全局白名单
             for d, v in routing.items(): 
                 if v['type'] == 'allow': f.write(f"@@||{d}^\n")
         
-        final_stats[f"{t}_total"] = len(compressed) + len(tier_raws[t]) + stats["allow"]
+        stats[f"{t}_total"] = len(compressed) + len(tier_raws[t]) + sum(1 for v in routing.values() if v['type'] == 'allow')
 
-    with open('rules/stats.json', 'w') as f: json.dump(final_stats, f)
-    print("✅ 构建完成")
+    with open('rules/stats.json', 'w', encoding='utf-8') as f:
+        json.dump(stats, f)
+    print("✅ 仲裁构建彻底完成！")
 
 if __name__ == '__main__': main()
-        original_len = len(ruleset[tier]['domains'])
-        trie = DomainTrie()
-        compressed_domains = set()
-        
-        # 确保按点号数量(层级)优先，再按长度排序
-        sorted_domains = sorted(
-            list(ruleset[tier]['domains']), 
-            key=lambda d: (d.count('.'), len(d))
         )
         
         for domain in sorted_domains:
