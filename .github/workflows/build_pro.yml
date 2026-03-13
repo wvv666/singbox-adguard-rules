@@ -1,10 +1,14 @@
 name: Build Sing-box SRS Rules (Pro)
 
-# 触发条件：每天定时运行，或在网页端手动点击运行
 on:
   schedule:
-    - cron: '30 22 * * *' # 为了避免和原来的任务完全同时运行冲突，这里我把时间错开了半小时
+    - cron: '30 22 * * *'
   workflow_dispatch:
+
+# 全局并发控制：取消进行中的旧任务，永远只跑最新的一次
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -12,6 +16,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # 全局超时熔断
 
     steps:
       - name: 检出代码
@@ -26,27 +31,81 @@ jobs:
       - name: 配置 Python 环境
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
+          cache: 'pip'
 
+      - name: 安装 Python 依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 确保系统基础工具完整
+        run: sudo apt-get update && sudo apt-get install -y jq curl wget
+
+      # 🛡️ 优化1：下载工具链增加极致 Retry 保护机制
       - name: 下载并安装最新版 sing-box
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "正在获取最新版 sing-box..."
-          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4)
-          wget -qO sing-box.tar.gz $DOWNLOAD_URL
-          tar -xzf sing-box.tar.gz
-          mv sing-box-*-linux-amd64/sing-box ./sing-box
+          
+          # curl 增加重试机制 (--retry 3) 以及静默容错
+          DOWNLOAD_URL=$(curl -sSf --retry 3 --retry-delay 5 -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r '.assets[] | select(.name | test("linux-amd64.tar.gz$")) | .browser_download_url')
+          
+          if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" == "null" ]; then
+            echo "❌ 致命错误：无法获取 sing-box 下载链接！"
+            exit 1
+          fi
+          
+          echo "成功获取下载直链: $DOWNLOAD_URL"
+          
+          # wget 增加超时和重试机制 (--tries=5 --timeout=15 --waitretry=3)
+          wget -qO sing-box.tar.gz --tries=5 --timeout=15 --waitretry=3 "$DOWNLOAD_URL"
+          
+          tar -xzf sing-box.tar.gz --wildcards "*/sing-box" --strip-components=1
           chmod +x ./sing-box
+          ./sing-box version
 
       - name: 运行核心构建引擎
         run: |
-          python src/builder.py
+          python -O src/builder.py
+
+      - name: 安全检查 (防御空规则与残缺构建)
+        run: |
+          echo "正在验证生成的规则文件..."
+          
+          if [ ! -f rules/extreme.txt ]; then
+            echo "❌ 致命错误：未找到 rules/extreme.txt 文件！构建引擎可能已崩溃。"
+            exit 1
+          fi
+          
+          EXTREME_COUNT=$(wc -l < rules/extreme.txt)
+          if [ "$EXTREME_COUNT" -lt 10000 ]; then
+            echo "❌ 致命错误：规则数量严重异常！预期十万级，实际仅生成了 $EXTREME_COUNT 条。"
+            echo "为防止脏数据覆盖用户的有效订阅，本次流水线已强制熔断！"
+            exit 1
+          fi
+          
+          echo "✅ 安全检查通过！极客版最终生成规则数: $EXTREME_COUNT 条，数据健康。"
+
+      - name: 提取统计数据供 Release 标题使用
+        id: stats
+        run: |
+          EXTREME_TOTAL=$(jq '.extreme_total' rules/stats.json)
+          echo "extreme_total=$EXTREME_TOTAL" >> $GITHUB_OUTPUT
 
       - name: 编译三个等级的 SRS 二进制规则
         run: |
+          echo "正在编译 Lite 版..."
           ./sing-box rule-set convert --type adguard rules/lite.txt -o rules/lite.srs
+          
+          echo "正在编译 Full 版..."
           ./sing-box rule-set convert --type adguard rules/full.txt -o rules/full.srs
+          
+          echo "正在编译 Extreme 版..."
           ./sing-box rule-set convert --type adguard rules/extreme.txt -o rules/extreme.srs
 
+      # 🛡️ 优化2：Git 提交流程增加 Rebase 合并机制，防御 Push 冲突
       - name: 运行渲染引擎并自动更新仓库 README
         run: |
           python src/generator.py
@@ -55,14 +114,23 @@ jobs:
           git config --local user.name "github-actions[bot]"
           
           git add README.md
-          git commit -m "docs: 自动更新 README 数据面板 [skip ci]" || echo "没有检测到数据变化，跳过提交"
-          git push
+          
+          # 检查是否有文件更改，避免空提交报错
+          if git diff --staged --quiet; then
+            echo "没有检测到数据变化，跳过提交"
+          else
+            git commit -m "docs: 自动更新 README 数据面板 [skip ci]"
+            # 使用 autostash 保护本地生成的文件，并与远程分支进行 rebase 变基合并
+            git pull --rebase --autostash origin ${{ github.ref_name }}
+            # 强壮的 push 命令，显式推送到触发该工作流的分支
+            git push origin HEAD:${{ github.ref_name }}
+          fi
 
       - name: 发布 Release 成果
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.date.outputs.release_tag }}
-          name: Sing-box 去广告规则集 Pro (${{ steps.date.outputs.release_tag }})
+          name: 终极去广告规则 Pro - ${{ steps.stats.outputs.extreme_total }}条 (${{ steps.date.outputs.release_tag }})
           files: |
             rules/lite.txt
             rules/lite.srs
@@ -70,9 +138,17 @@ jobs:
             rules/full.srs
             rules/extreme.txt
             rules/extreme.srs
-          body: "完全遵循 sing-box 1.10.0+ 官方规范构建的顶级去广告规则集。包含 Lite、Full、Extreme 三个版本。"
+          body: |
+            完全遵循 sing-box 1.10.0+ 官方规范构建的顶级去广告规则集。包含 Lite、Full、Extreme 三个梯度的无忧防误杀体验。
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: 清理历史过期版本
+        uses: dev-drprasad/delete-older-releases@v0.3.3
+        with:
+          keep_latest: 5
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
