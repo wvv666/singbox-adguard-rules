@@ -13,7 +13,6 @@
 @@||wan.douyu.com^
 @@||www.googleadservices.com^
 @@||x2.ifengimg.com^
-[Adblock Plus 2.0]
 ||*.diwodiwo.xyz^
 ||*.exaapi.com^
 ||*.p2p.huya.com^
