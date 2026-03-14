@@ -1,0 +1,134 @@
+{
+  "id": 9999,
+  "name": "Merged GKD Subscription",
+  "version": 1,
+  "author": "AI Assistant",
+  "checkUpdateUrl": "./merged_gkd.version.json5",
+  "supportUri": "https://github.com/",
+  "categories": [
+    { "key": -1, "name": "Permission Prompt", "enable": false },
+    { "key": 0, "name": "Splash Ads" },
+    { "key": 1, "name": "Teen Mode", "enable": false },
+    { "key": 2, "name": "Update Prompt", "enable": false },
+    { "key": 3, "name": "Rating Prompt", "enable": false },
+    { "key": 4, "name": "Notification Prompt", "enable": false },
+    { "key": 5, "name": "Location Prompt", "enable": false },
+    { "key": 6, "name": "Local Ads", "enable": false },
+    { "key": 7, "name": "Fullscreen Ads", "enable": false },
+    { "key": 8, "name": "Segment Ads", "enable": false },
+    { "key": 9, "name": "Functions", "enable": false },
+    { "key": 10, "name": "Others", "enable": false }
+  ],
+  "globalGroups": [
+    {
+      "key": 0,
+      "name": "Splash Ads - Global",
+      "desc": "Click to skip splash ads",
+      "order": -10,
+      "matchTime": 9000,
+      "fastQuery": true,
+      "resetMatch": "app",
+      "actionMaximum": 2,
+      "actionMaximumKey": 0,
+      "rules": [
+        {
+          "key": 0,
+          "matches": "[text*=\"skip\"][text.length<10][visibleToUser=true]"
+        }
+      ],
+      "apps": [
+        { "id": "com.tencent.mm", "enable": false },
+        { "id": "li.songe.gkd", "enable": false },
+        { "id": "com.eg.android.AlipayGphone", "enable": false },
+        { "id": "mark.via", "enable": false },
+        { "id": "mark.via.gp", "enable": false },
+        { "id": "com.mmbox.xbrowser", "enable": false },
+        { "id": "com.mmbox.xbrowser.pro", "enable": false },
+        { "id": "com.mycompany.app.soulbrowser", "enable": false }
+      ]
+    },
+    {
+      "key": 1,
+      "name": "Update Prompt - Global",
+      "desc": "Close update prompt popup",
+      "order": -9,
+      "matchTime": 10000,
+      "fastQuery": true,
+      "resetMatch": "app",
+      "actionMaximum": 1,
+      "rules": [
+        {
+          "key": 0,
+          "matches": ["[text*=\"update\"||text*=\"new version\"||text*=\"upgrade\"]", "[text=\"cancel\"||text=\"ignore\"||text=\"later\"]"]
+        }
+      ],
+      "apps": [
+        { "id": "com.tencent.mm", "enable": false },
+        { "id": "li.songe.gkd", "enable": false },
+        { "id": "com.eg.android.AlipayGphone", "enable": false }
+      ]
+    },
+    {
+      "key": 2,
+      "name": "Teen Mode - Global",
+      "desc": "Close teen mode prompt",
+      "order": -8,
+      "matchTime": 10000,
+      "fastQuery": true,
+      "resetMatch": "app",
+      "actionMaximum": 1,
+      "rules": [
+        {
+          "key": 0,
+          "matches": ["[text*=\"teen\"||text*=\"minor\"||text*=\"child\"]", "[text=\"I know\"||text=\"close\"]"]
+        }
+      ],
+      "apps": [
+        { "id": "com.tencent.mm", "enable": false },
+        { "id": "li.songe.gkd", "enable": false }
+      ]
+    }
+  ],
+  "apps": [
+    {
+      "id": "com.tencent.mm",
+      "name": "WeChat",
+      "groups": [
+        {
+          "key": 0,
+          "name": "Splash Ads",
+          "desc": "Click to skip splash ads",
+          "matchTime": 10000,
+          "actionMaximum": 1,
+          "resetMatch": "app",
+          "rules": [
+            {
+              "key": 0,
+              "matches": "[text*=\"skip\"][text.length<10][visibleToUser=true]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "com.eg.android.AlipayGphone",
+      "name": "Alipay",
+      "groups": [
+        {
+          "key": 0,
+          "name": "Splash Ads",
+          "desc": "Click to skip splash ads",
+          "matchTime": 10000,
+          "actionMaximum": 1,
+          "resetMatch": "app",
+          "rules": [
+            {
+              "key": 0,
+              "matches": "[text*=\"skip\"][text.length<10][visibleToUser=true]"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
