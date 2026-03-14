@@ -1,9 +1,9 @@
-name: Build Sing-box SRS Rules (Optimized)
+name: Sync and Convert SRS
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 22 * * *' # 每天北京时间凌晨 6 点执行
-  workflow_dispatch:   # 支持手动触发
+    - cron: "0 22 * * *"
 
 permissions:
   contents: write
@@ -11,167 +11,38 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 检出代码
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 获取当前时间作为版本号
-        id: date
-        run: echo "release_tag=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
-
-      - name: 下载并安装最新版 sing-box
+      - name: Install sing-box
         run: |
-          echo "正在获取最新版 sing-box..."
-          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4)
-          wget -qO sing-box.tar.gz $DOWNLOAD_URL
+          TAG=$(curl -s "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | jq -r .tag_name)
+          VERSION=${TAG#v}
+          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${VERSION}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
-          mv sing-box-*-linux-amd64/sing-box ./sing-box
-          chmod +x ./sing-box
+          sudo mv sing-box-*/sing-box /usr/local/bin/
 
-      - name: 批量下载上游规则
+      - name: Merge and Deduplicate
         run: |
-          URLS=(
-            "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt"
-            "https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt"
-            "https://easylist-downloads.adblockplus.org/easylist.txt"
-            "https://filters.adtidy.org/android/filters/2_optimized.txt"
-            "https://filters.adtidy.org/android/filters/11_optimized.txt"
-            "https://filters.adtidy.org/android/filters/3_optimized.txt"
-            "https://filters.adtidy.org/android/filters/224_optimized.txt"
-            "https://filters.adtidy.org/android/filters/10_optimized.txt"
-            "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdnslite.txt"
-            "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_24.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_11.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_59.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_39.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_6.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_30.txt"
-            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_50.txt"
-          )
-          
-          for url in "${URLS[@]}"; do
-            echo "正在下载: $url"
-            # 只要有一个下载失败，立即报错退出，保证规则集的完整性
-            if ! curl -sfL --retry 3 --retry-delay 5 "$url" >> adguard_rules_raw.txt; then
-              echo "❌ 致命错误: 无法下载 $url"
-              exit 1
-            fi
-            echo -e "\n" >> adguard_rules_raw.txt
-          done
+          # 1. 下载多个源并合并到 raw.txt
+          curl -sL "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt" > raw.txt
+          # 2. 仅进行物理去重（保留所有原始行，包括注释，但剔除完全重复的行）
+          sort -u raw.txt > merged.txt
 
-      - name: 深度清洗与父域名去重 (Python)
+      - name: Convert
         run: |
-          cat << 'EOF' > clean_rules.py
-          import re
-          import os
+          # 将合并后的文本转换为二进制 srs
+          sing-box rule-set convert --type adguard --output dns_filter.srs merged.txt
 
-          def clean():
-              input_file = 'adguard_rules_raw.txt'
-              output_file = 'adguard_rules_clean.txt'
-              raw_domains = set()
-
-              # 正则定义
-              hosts_pattern = re.compile(r'^(?:127\.0\.0\.1|0\.0\.0\.0|::1)\s+([a-zA-Z0-9.-]+)$')
-              adg_pattern = re.compile(r'^\|\|([a-zA-Z0-9.-]+)\^$')
-
-              if not os.path.exists(input_file):
-                  return
-
-              # 1. 标准化提取与初步过滤
-              with open(input_file, 'r', encoding='utf-8', errors='ignore') as f:
-                  for line in f:
-                      line = line.strip().lower()
-                      if not line or any(line.startswith(x) for x in ['!', '#', '@@', '[']):
-                          continue
-                      if any(x in line for x in ['##', '#?#', '$$']):
-                          continue
-
-                      domain = None
-                      adg_match = adg_pattern.match(line)
-                      if adg_match:
-                          domain = adg_match.group(1)
-                      else:
-                          host_match = hosts_pattern.match(line)
-                          if host_match:
-                              domain = host_match.group(1)
-                          elif re.match(r'^[a-zA-Z0-9.-]+$', line):
-                              domain = line
-
-                      if domain and not (domain.startswith('.') or domain.endswith('-') or '..' in domain):
-                          if domain not in ['localhost', 'local', 'broadcasthost']:
-                              raw_domains.add(domain)
-
-              # 2. 高效父域名去重 (Parent Domain Deduction)
-              # 按长度排序确保先处理父域名，再处理子域名
-              sorted_domains = sorted(list(raw_domains), key=len)
-              final_domains = set()
-              
-              for d in sorted_domains:
-                  parts = d.split('.')
-                  is_redundant = False
-                  # 逐级向上回溯检查。例如处理 a.b.c.com，会检查 c.com 和 b.c.com
-                  for i in range(len(parts) - 1, 1, -1):
-                      parent = ".".join(parts[i-len(parts):])
-                      if parent in final_domains:
-                          is_redundant = True
-                          break
-                  if not is_redundant:
-                      final_domains.add(d)
-
-              # 3. 写入文件（保持 AdGuard 语法以兼容 sing-box convert）
-              with open(output_file, 'w', encoding='utf-8') as f:
-                  for d in sorted(list(final_domains)):
-                      f.write(f"||{d}^\n")
-
-          if __name__ == "__main__":
-              clean()
-          EOF
-          python3 clean_rules.py
-
-      - name: 统计结果并编译 SRS
-        id: build_srs
+      - name: Push to Repository
         run: |
-          RULE_COUNT=$(wc -l < adguard_rules_clean.txt)
-          echo "最终有效规则数: $RULE_COUNT"
-          echo "rule_count=$RULE_COUNT" >> $GITHUB_OUTPUT
-          
-          # 编译为二进制 SRS 和 文本 JSON
-          ./sing-box rule-set convert --type adguard adguard_rules_clean.txt -o adguard.srs
-          ./sing-box rule-set convert --type adguard adguard_rules_clean.txt -o adguard.json
-
-      - name: 发布至 Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.date.outputs.release_tag }}
-          name: 🛡️ 去广告规则集 [${{ steps.build_srs.outputs.rule_count }} 条]
-          files: |
-            adguard.srs
-            adguard.json
-            adguard_rules_clean.txt
-          body: |
-            ### 🛠️ 构建信息
-            - **构建版本**: `${{ steps.date.outputs.release_tag }}`
-            - **规则总数**: `${{ steps.build_srs.outputs.rule_count }}` 条
-            - **核心引擎**: Sing-box 最新版
-            
-            ### ✨ 优化项
-            - **自动去重**: 已剔除 19 个源中的重复项。
-            - **父域名优化**: 自动识别并删除冗余子域名（例如已有 `example.com` 则自动剔除 `ads.example.com`），极大提升匹配效率。
-            - **格式兼容**: 完美支持 Sing-box 1.10+ 版本。
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 清理旧版本 (保留最近 5 个)
-        uses: dev-drprasad/delete-older-releases@v0.3.3
-        with:
-          keep_latest: 5
-          delete_tags: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add dns_filter.srs
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update SRS: $(date +'%Y-%m-%d')"
+            git push origin main
+          fi
