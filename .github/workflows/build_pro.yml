@@ -27,20 +27,25 @@ jobs:
       - name: Download, Process and Compile Rules
         run: |
           # ==========================================
-          # ⬇️ 在此填入您的列表链接 ⬇️
+          # ⬇️ 在此填入您的海量列表链接 ⬇️
           # ==========================================
           
-          # 1. DNS 广告列表 (AdGuard 语法格式)
+          # 1. DNS 广告列表 (AdGuard 语法格式: ||example.com^)
           DNS_URLS=(
-            "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdnslite.txt"
+            "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt"
+            "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt"
+            "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt"
+            "https://adguardteam.github.io/HostlistsRegistry/assets/filter_24.txt"
           )
           
-          # 2. 域名广告列表 (纯域名文本格式)
+          # 2. 域名广告列表 (纯域名文本格式: example.com)
           DOMAIN_URLS=(
             "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/AWAvenue-Ads-Rule.txt"
+            "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt"
+            "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/adblock.txt"
           )
           
-          # 创建准备发布的文件夹，新增 dist-json
+          # 创建所需的所有输出文件夹
           mkdir -p dist-text dist-srs dist-json
           
           RAW_DNS="raw_dns_temp.txt"
@@ -48,31 +53,49 @@ jobs:
           > "$RAW_DNS"
           > "$RAW_DOMAIN"
           
-          # --- 1. 下载列表 ---
-          echo "🔄 下载 DNS 列表 (AdGuard 格式)..."
+          # --- 1. 批量下载并合并 ---
+          echo "🔄 正在下载并合并所有 DNS 列表..."
           for url in "${DNS_URLS[@]}"; do
             curl -sSL "$url" >> "$RAW_DNS"
-            echo "" >> "$RAW_DNS"
+            echo "" >> "$RAW_DNS" 
           done
           
-          echo "🔄 下载域名列表 (纯文本格式)..."
+          echo "🔄 正在下载并合并所有域名列表..."
           for url in "${DOMAIN_URLS[@]}"; do
             curl -sSL "$url" >> "$RAW_DOMAIN"
             echo "" >> "$RAW_DOMAIN"
           done
 
-          # --- 2. 处理 DNS 规则 (直接 Convert) ---
-          echo "🧹 去重并生成 DNS 规则..."
-          grep -v '^$' "$RAW_DNS" | sort -u > dist-text/dns_ad.txt
+          # --- 2. 工业级清洗与全局去重 ---
+          echo "🧹 正在对 DNS 规则进行深度清洗和去重..."
+          sed -i 's/\r//g' "$RAW_DNS"
+          grep -E -v '^[!#]' "$RAW_DNS" | grep -v '^$' | sort -u > dist-text/dns_ad.txt
           
-          echo "🔨 使用 convert 转换 DNS 规则为 .srs..."
+          echo "🧹 正在对纯域名规则进行深度清洗和去重..."
+          sed -i 's/\r//g' "$RAW_DOMAIN"
+          grep -E -v '^[!#]' "$RAW_DOMAIN" | awk '{print $1}' | grep -v '^$' | sort -u > dist-text/domain_ad.txt
+
+          echo "📊 最终去重后的有效规则数量："
+          wc -l dist-text/dns_ad.txt dist-text/domain_ad.txt
+
+          # --- 3. 处理 DNS 规则 (双线并行) ---
+          echo "🔨 [DNS 规则] 1/2: 使用 convert 直接转换为 .srs (保留 AdGuard 语法威力)..."
           sing-box rule-set convert --type adguard --output dist-srs/dns_ad.srs dist-text/dns_ad.txt
 
-          # --- 3. 处理普通域名规则 (JSON 封装后 Compile) ---
-          echo "🧹 清理、去重并生成纯域名规则..."
-          grep -v '^#' "$RAW_DOMAIN" | grep -v '^$' | awk '{print $1}' | sort -u > dist-text/domain_ad.txt
+          echo "🔄 [DNS 规则] 2/2: 剥离修饰符，提取纯域名转换为 JSON..."
+          # 使用 sed 剥离开头的 || 和结尾的 ^，方便生成基于 domain_suffix 的 JSON
+          sed 's/^||//g; s/\^$//g' dist-text/dns_ad.txt | grep -v '^$' > temp_dns_pure.txt
+          jq -R . temp_dns_pure.txt | jq -s 'map(select(length > 0))' | jq '{
+            "version": 2,
+            "rules": [
+              {
+                "domain_suffix": .
+              }
+            ]
+          }' > dist-json/dns_ad.json
           
-          echo "🔄 封装纯域名规则为 JSON 并保存到 dist-json 目录..."
+          # --- 4. 处理纯域名规则 ---
+          echo "🔄 [域名规则] 1/2: 封装纯域名规则为 JSON..."
           jq -R . dist-text/domain_ad.txt | jq -s 'map(select(length > 0))' | jq '{
             "version": 2,
             "rules": [
@@ -82,52 +105,48 @@ jobs:
             ]
           }' > dist-json/domain_ad.json
           
-          echo "🔨 编译普通域名规则为 .srs..."
+          echo "🔨 [域名规则] 2/2: 编译普通域名 JSON 为 .srs..."
           sing-box rule-set compile --output dist-srs/domain_ad.srs dist-json/domain_ad.json
           
-          # --- 4. 收尾清理 (不再删除 JSON 文件) ---
-          echo "🧹 清理临时文件..."
-          rm "$RAW_DNS" "$RAW_DOMAIN"
-          
-          echo "✅ 所有处理已完成。"
+          # --- 5. 收尾清理 ---
+          echo "🧹 清理临时下载文件..."
+          rm "$RAW_DNS" "$RAW_DOMAIN" temp_dns_pure.txt
+          echo "✅ 构建大功告成！"
 
       - name: Get Current Date
         id: info
-        run: |
-          echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        run: echo "DATE=$(date +'%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      # 1. 推送 text 分支
-      - name: Deploy Raw Text to 'text' branch
+      # 分别推送到三个分支
+      - name: Deploy Raw Text
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist-text
           publish_branch: text
           enable_jekyll: false
-          commit_message: "Github Action: update raw text lists [${{ steps.info.outputs.DATE }}]"
+          commit_message: "Update text lists [${{ steps.info.outputs.DATE }}]"
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
 
-      # 2. 推送 json 分支 (新增)
-      - name: Deploy JSON to 'json' branch
+      - name: Deploy JSON
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist-json
           publish_branch: json
           enable_jekyll: false
-          commit_message: "Github Action: update json rulesets [${{ steps.info.outputs.DATE }}]"
+          commit_message: "Update json lists [${{ steps.info.outputs.DATE }}]"
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
 
-      # 3. 推送 rule-set 分支
-      - name: Deploy SRS to 'rule-set' branch
+      - name: Deploy SRS
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist-srs
           publish_branch: rule-set
           enable_jekyll: false
-          commit_message: "Github Action: update compiled srs rulesets [${{ steps.info.outputs.DATE }}]"
+          commit_message: "Update srs rulesets [${{ steps.info.outputs.DATE }}]"
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
