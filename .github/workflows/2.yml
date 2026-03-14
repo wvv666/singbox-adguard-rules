@@ -1,9 +1,9 @@
-name: Build Sing-box SRS Rules Professional
+name: Build Sing-box SRS Rules
 
 on:
   schedule:
-    - cron: '0 22 * * *' # 每日北京时间早 6 点执行
-  workflow_dispatch:   # 支持手动触发
+    - cron: '0 22 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,26 +13,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出仓库代码
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 生成版本元数据
-        id: meta
+      - name: 获取当前时间
+        id: date
         run: |
           echo "release_tag=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
-          echo "build_time=$(date +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_OUTPUT
+          echo "build_date=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
 
-      - name: 安装最新版 sing-box
+      - name: 下载并安装最新版 sing-box
         run: |
-          gh release download --repo SagerNet/sing-box --pattern "*linux-amd64.tar.gz" --latest
-          tar -xzf sing-box-*-linux-amd64.tar.gz
+          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4)
+          wget -qO sing-box.tar.gz $DOWNLOAD_URL
+          tar -xzf sing-box.tar.gz
           mv sing-box-*-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
-          ./sing-box version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 批量下载规则源
+      - name: 下载上游规则
         run: |
           URLS=(
             "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt"
@@ -40,220 +38,115 @@ jobs:
             "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdnslite.txt"
             "https://adguardteam.github.io/HostlistsRegistry/assets/filter_24.txt"
             "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt"
-            "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt"
           )
-          > raw.txt
+          > adguard_rules_raw.txt
           for url in "${URLS[@]}"; do
-            echo "正在下载: $url"
-            curl -sfL --retry 3 --retry-delay 2 "$url" >> raw.txt || echo "⚠️ 跳过失败源: $url"
-            echo -e "\n" >> raw.txt
+            curl -sfL --retry 3 "$url" >> adguard_rules_raw.txt
+            echo -e "\n" >> adguard_rules_raw.txt
           done
 
-      - name: 执行深度清洗与 PDD 优化 (Python)
-        id: rule_process
+      - name: 深度清洗脚本 (优化版)
         run: |
-          cat << 'EOF' > process.py
+          cat << 'EOF' > clean_rules.py
           import re
-          import os
+          import datetime
 
-          blacklist = set()
-          whitelist = set()
-          badfilter_set = set()
-
-          # 预编译正则
-          # 标准规则: [@@]||domain^[修饰符]
-          std_pattern = re.compile(r'^(@@)?\|\|([a-zA-Z0-9.-]+)\^?(\$.*)?$')
-          # 正则规则: /regex/[修饰符]
-          regex_pattern = re.compile(r'^(/.*/[^/\s]*)(\$.*)?$')
-          # Hosts规则: 0.0.0.0 domain
-          hosts_pattern = re.compile(r'^0\.0\.0\.0\s+([a-zA-Z0-9.-]+)$')
-
-          def is_valid_domain(d):
-              """检查是否为有效域名（非IP、无端口/路径）"""
-              if not d or ':' in d or '/' in d or d.startswith('.') or d.endswith('.') or '.' not in d:
+          # 配置
+          BUILD_DATE = "${{ steps.date.outputs.build_date }}"
+          SOURCES = ["AWAvenue", "GoodbyeAds", "AdBlockDNSLite", "AdGuard 24", "AdGuard 1"]
+          
+          def is_valid_domain(domain):
+              if not domain or '..' in domain or domain.startswith('.') or domain.endswith('.'):
                   return False
-              # 排除纯IP
-              if re.match(r'^\d{1,3}(\.\d{1,3}){3}$', d):
-                  return False
-              return True
+              return not (domain.startswith('-') or domain.endswith('-'))
 
-          def parse_modifiers(mod_str):
-              """解析修饰符字符串，返回 (保留的修饰符列表, 是否包含badfilter, 是否包含其他不支持修饰符)"""
-              if not mod_str:
-                  return [], False, False
-              # 去掉开头的$，按逗号分割
-              parts = mod_str.lstrip('$').split(',')
-              mods = [p.strip() for p in parts if p.strip()]
-              supported = ['important']  # 仅支持 important
-              has_badfilter = 'badfilter' in mods
-              # 检查是否包含非important且非badfilter的修饰符
-              has_unsupported = any(m not in supported and m != 'badfilter' for m in mods)
-              # 保留的修饰符：只取supported中实际存在的
-              keep = [m for m in mods if m in supported]
-              return keep, has_badfilter, has_unsupported
+          # 匹配 IPv4 和 IPv6 的 Hosts 格式
+          # 支持: 127.0.0.1, 0.0.0.0, ::1, 0:0:0:0:0:0:0:1
+          hosts_pattern = re.compile(r'^(?:127\.0\.0\.1|0\.0\.0\.0|::1|0:0:0:0:0:0:0:1)\s+([a-zA-Z0-9.-]+)', re.IGNORECASE)
+          ip_rule_pattern = re.compile(r'^(\|\||@@\|\|)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\^?$')
 
-          with open('raw.txt', 'r', encoding='utf-8', errors='ignore') as f:
+          black_rules = set()
+          white_rules = set()
+
+          with open('adguard_rules_raw.txt', 'r', encoding='utf-8', errors='ignore') as f:
               for line in f:
                   line = line.strip()
-                  if not line or line.startswith(('!', '#', ';')):
+                  if not line or line.startswith(('!', '#')) or any(x in line for x in ['##', '#?#', '$$']):
                       continue
 
-                  # --- 尝试匹配标准规则 ---
-                  std_match = std_pattern.match(line)
-                  if std_match:
-                      is_white = bool(std_match.group(1))  # '@@'
-                      domain = std_match.group(2).lower()
-                      mod_part = std_match.group(3) or ''
-                      keep_mods, has_bad, has_unsupported = parse_modifiers(mod_part)
+                  # 1. 统一处理 @@ 标记 (剥离)
+                  is_white = line.startswith('@@')
+                  core_rule = line[2:] if is_white else line
 
-                      # 处理badfilter：仅收集域名用于抵消，不输出规则
-                      if has_bad and is_valid_domain(domain):
-                          badfilter_set.add(domain)
-                          # 跳过本条规则（不加入黑白名单）
-                          continue
-
-                      # 如果包含其他不支持修饰符，丢弃规则
-                      if has_unsupported:
-                          continue
-
-                      # 验证域名有效性
-                      if not is_valid_domain(domain):
-                          continue
-
-                      # 构建最终规则（保留修饰符）
-                      rule = f"{'@@' if is_white else ''}||{domain}^"
-                      if keep_mods:
-                          rule += '$' + ','.join(keep_mods)
-
-                      if is_white:
-                          whitelist.add(rule)
-                      else:
-                          blacklist.add(rule)
-                      continue
-
-                  # --- 尝试匹配正则规则 ---
-                  regex_match = regex_pattern.match(line)
-                  if regex_match:
-                      regex_body = regex_match.group(1)  # 正则主体，如 /regex/
-                      mod_part = regex_match.group(2) or ''
-                      keep_mods, has_bad, has_unsupported = parse_modifiers(mod_part)
-
-                      # 处理badfilter：正则无法提取域名，直接忽略该规则
-                      if has_bad:
-                          # 无法收集域名，跳过
-                          continue
-
-                      # 如果包含不支持修饰符（包括important），丢弃规则（因为修饰符对正则的支持未知）
-                      # 为了安全，只保留纯正则规则
-                      if has_unsupported or keep_mods:
-                          continue
-
-                      # 纯正则规则直接加入黑名单（正则规则无白名单概念）
-                      blacklist.add(regex_body)
-                      continue
-
-                  # --- 尝试匹配Hosts规则 ---
-                  hosts_match = hosts_pattern.match(line)
-                  if hosts_match:
-                      domain = hosts_match.group(1).lower()
-                      # Hosts规则无修饰符，直接验证域名并加入黑名单
+                  # 2. 处理 Hosts 格式 (如果是 Hosts 则转换为 0.0.0.0)
+                  host_match = hosts_pattern.match(core_rule)
+                  if host_match:
+                      domain = host_match.group(1)
+                      if domain.lower() in ('localhost', 'broadcasthost'): continue
                       if is_valid_domain(domain):
-                          blacklist.add(f"||{domain}^")
+                          core_rule = f"0.0.0.0 {domain}"
+                      else: continue
+
+                  # 3. 基础语法清洗 (剔除路径、端口、非法 IP)
+                  # 仅处理非正则规则
+                  if not core_rule.startswith('/'):
+                      rule_content = core_rule.split('$')[0]
+                      if '/' in rule_content or (':' in rule_content and not rule_content.startswith('::')):
+                          continue
+                  
+                  if ip_rule_pattern.match(core_rule):
                       continue
 
-                  # --- 其他格式忽略 ---
+                  # 4. 描述符过滤 (仅保留 $important)
+                  if '$' in core_rule:
+                      base, mod = core_rule.split('$', 1)
+                      core_rule = f"{base}$important" if 'important' in mod else base
 
-          # 应用 badfilter 抵消（仅针对黑名单）
-          blacklist = {r for r in blacklist if not any(d in r for d in badfilter_set)}
+                  # 5. 还原并归类
+                  final_rule = f"@@{core_rule}" if is_white else core_rule
+                  if is_white: white_rules.add(final_rule)
+                  else: black_rules.add(final_rule)
 
-          # 父域名去重优化 (PDD)
-          def optimize(rules):
-              """保留最具体的域名，去除父域名冗余"""
-              domain_map = {}
-              regex_rules = set()
-              for r in rules:
-                  if r.startswith('/'):  # 正则规则
-                      regex_rules.add(r)
-                      continue
-                  # 提取纯域名部分
-                  d = r.replace('@@', '').replace('||', '').split('^')[0].split('$')[0]
-                  domain_map[d] = r
+          # 写入函数
+          def write_with_header(filename, rules, title):
+              with open(filename, 'w', encoding='utf-8') as f:
+                  f.write(f"! Title: {title}\n")
+                  f.write(f"! Last Modified: {BUILD_DATE}\n")
+                  f.write(f"! Sources: {', '.join(SOURCES)}\n")
+                  f.write(f"! Rule Count: {len(rules)}\n")
+                  f.write("! \n")
+                  for r in sorted(rules): f.write(r + '\n')
 
-              sorted_domains = sorted(domain_map.keys(), key=len)
-              final_domains = set()
-              final_rules = set()
-              for d in sorted_domains:
-                  parts = d.split('.')
-                  # 检查是否有更具体的子域名已被保留
-                  if not any('.'.join(parts[i:]) in final_domains for i in range(1, len(parts))):
-                      final_domains.add(d)
-                      final_rules.add(domain_map[d])
-              return final_rules.union(regex_rules)
-
-          final_black = optimize(blacklist)
-          final_white = optimize(whitelist)
-
-          with open('block.txt', 'w') as f:
-              for r in sorted(final_black):
-                  f.write(f"{r}\n")
-          with open('allow.txt', 'w') as f:
-              for r in sorted(final_white):
-                  f.write(f"{r}\n")
-
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f"block_count={len(final_black)}\n")
-              f.write(f"allow_count={len(final_white)}\n")
+          write_with_header('adguard_rules_clean.txt', black_rules, "AdGuard Block List")
+          write_with_header('adguard_whitelist_clean.txt', white_rules, "AdGuard White List")
           EOF
-          python3 process.py
+          python3 clean_rules.py
 
-      - name: 编译二进制 SRS
-        id: compile
+      - name: 编译与发布
         run: |
-          ./sing-box rule-set convert --type adguard --output block.srs block.txt
-          ./sing-box rule-set convert --type adguard --output allow.srs allow.txt
-          echo "block_md5=$(md5sum block.srs | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "allow_md5=$(md5sum allow.srs | awk '{print $1}')" >> $GITHUB_OUTPUT
+          ./sing-box rule-set convert --type adguard adguard_rules_clean.txt -o adguard.srs
+          ./sing-box rule-set convert --type adguard adguard_whitelist_clean.txt -o whitelist.srs
 
-      - name: 增量更新检查
-        id: check
-        run: |
-          LATEST_BODY=$(gh release view --json body -q .body 2>/dev/null || echo "none")
-          if [[ "$LATEST_BODY" == *"${{ steps.compile.outputs.block_md5 }}"* ]]; then
-            echo "update_needed=false" >> $GITHUB_OUTPUT
-          else
-            echo "update_needed=true" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 发布 Release
-        if: steps.check.outputs.update_needed == 'true'
+      - name: GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.meta.outputs.release_tag }}
-          name: 🛡️ Sing-box 广告过滤规则集 [${{ steps.meta.outputs.build_time }}]
+          tag_name: ${{ steps.date.outputs.release_tag }}
+          name: 自动构建规则 - ${{ steps.date.outputs.release_tag }}
           files: |
-            block.srs
-            allow.srs
-            block.txt
-            allow.txt
+            adguard.srs
+            whitelist.srs
+            adguard_rules_clean.txt
+            adguard_whitelist_clean.txt
           body: |
-            📊 **规则统计**
-            - 拦截规则：${{ steps.rule_process.outputs.block_count }} 条
-            - 白名单规则：${{ steps.rule_process.outputs.allow_count }} 条
+            构建时间: `${{ steps.date.outputs.build_date }}`
             
-            🔑 **文件 MD5**
-            - `block.srs`: `${{ steps.compile.outputs.block_md5 }}`
-            - `allow.srs`: `${{ steps.compile.outputs.allow_md5 }}`
-            
-            🚀 **构建说明**
-            - 适配 **sing-box v1.10.0+** 的 `adguard` 规则引擎。
-            - 自动执行 **Parent Domain Deduction (PDD)** 优化。
-            - 自动剔除 sing-box 不支持的语法（如非`0.0.0.0`的Hosts、非`important`修饰符、端口/路径规则等）。
+            - **adguard.srs**: 拦截规则二进制集
+            - **whitelist.srs**: 白名单二进制集
+            - 规则源已深度清洗，符合 sing-box 1.10.0+ 规范。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 清理陈旧 Release
+      - name: 清理旧版本
         uses: dev-drprasad/delete-older-releases@v0.3.3
         with:
           keep_latest: 3
