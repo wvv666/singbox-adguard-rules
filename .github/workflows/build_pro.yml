@@ -3,7 +3,6 @@ name: Update Adblock Rulesets
 on:
   schedule:
     - cron: '0 4 * * *'
-  # 当您修改了这两个存放链接的文件时，立即自动触发更新！
   push:
     paths:
       - 'dns-links.txt'
@@ -38,53 +37,62 @@ jobs:
           > "$RAW_DNS"
           > "$RAW_DOMAIN"
           
-          # --- 1. 读取链接文件并批量下载 ---
-          echo "🔄 正在读取 dns-links.txt 并下载上游规则..."
+          # --- 1. 读取链接并下载 ---
+          echo "🔄 下载 DNS 规则..."
           if [ -f "dns-links.txt" ]; then
             while IFS= read -r url || [ -n "$url" ]; do
-              # 剔除空行和带有 # 的注释行 (允许您在链接文件里写注释)
               if [[ -n "$url" && ! "$url" =~ ^# ]]; then
-                url=$(echo "$url" | tr -d '\r') # 清除网址可能自带的隐藏回车符
-                echo "  ⬇️ 正在下载: $url"
+                url=$(echo "$url" | tr -d '\r')
+                echo "  ⬇️ 下载: $url"
                 curl -sSL "$url" >> "$RAW_DNS"
                 echo "" >> "$RAW_DNS"
               fi
             done < "dns-links.txt"
-          else
-            echo "⚠️ 未找到 dns-links.txt，跳过 DNS 规则处理。"
           fi
           
-          echo "🔄 正在读取 domain-links.txt 并下载上游规则..."
+          echo "🔄 下载域名规则..."
           if [ -f "domain-links.txt" ]; then
             while IFS= read -r url || [ -n "$url" ]; do
               if [[ -n "$url" && ! "$url" =~ ^# ]]; then
                 url=$(echo "$url" | tr -d '\r')
-                echo "  ⬇️ 正在下载: $url"
+                echo "  ⬇️ 下载: $url"
                 curl -sSL "$url" >> "$RAW_DOMAIN"
                 echo "" >> "$RAW_DOMAIN"
               fi
             done < "domain-links.txt"
-          else
-            echo "⚠️ 未找到 domain-links.txt，跳过域名规则处理。"
           fi
 
-          # --- 2. 工业级清洗与全局去重 ---
-          echo "🧹 正在清洗并去重数据..."
-          sed -i 's/\r//g' "$RAW_DNS"
-          grep -E -v '^[!#]' "$RAW_DNS" | grep -v '^$' | sort -u > dist-text/dns_ad.txt
+          # --- 2. 外科手术级清洗与去重 ---
+          echo "🧹 深度清洗 DNS 规则 (AdGuard 格式)..."
+          cat "$RAW_DNS" | \
+            tr -d '\r' | \
+            sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | \
+            grep -vE '^[!#\[]' | \
+            sed 's/[[:space:]]*#.*$//' | \
+            awk '{print $1}' | \
+            grep -v '^$' | \
+            sort -u > dist-text/dns_ad.txt
           
-          sed -i 's/\r//g' "$RAW_DOMAIN"
-          grep -E -v '^[!#]' "$RAW_DOMAIN" | awk '{print $1}' | grep -v '^$' | sort -u > dist-text/domain_ad.txt
+          echo "🧹 深度清洗纯域名规则 (支持 Hosts 格式解析)..."
+          cat "$RAW_DOMAIN" | \
+            tr -d '\r' | \
+            sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | \
+            grep -vE '^[!#\[]' | \
+            sed -E 's/^(0\.0\.0\.0|127\.0\.0\.1|::1)[[:space:]]+//' | \
+            sed 's/[[:space:]]*#.*$//' | \
+            awk '{print $1}' | \
+            grep -E '^([a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$' | \
+            sort -u > dist-text/domain_ad.txt
 
           echo "📊 最终有效规则数量："
           wc -l dist-text/dns_ad.txt dist-text/domain_ad.txt
 
-          # --- 3. 处理 DNS 规则 (双线并行) ---
+          # --- 3. 处理 DNS 规则 ---
           if [ -s dist-text/dns_ad.txt ]; then
-            echo "🔨 [DNS] 使用 convert 直接转换为 .srs..."
+            echo "🔨 [DNS] 转换为 .srs..."
             sing-box rule-set convert --type adguard --output dist-srs/dns_ad.srs dist-text/dns_ad.txt
 
-            echo "🔄 [DNS] 剥离修饰符转换为 JSON..."
+            echo "🔄 [DNS] 提取纯域名转换为 JSON..."
             sed 's/^||//g; s/\^$//g' dist-text/dns_ad.txt | grep -v '^$' > temp_dns_pure.txt
             jq -R . temp_dns_pure.txt | jq -s 'map(select(length > 0))' | jq '{
               "version": 2,
@@ -104,15 +112,15 @@ jobs:
             sing-box rule-set compile --output dist-srs/domain_ad.srs dist-json/domain_ad.json
           fi
           
-          # --- 5. 收尾清理 ---
+          # --- 5. 清理 ---
           rm -f "$RAW_DNS" "$RAW_DOMAIN" temp_dns_pure.txt
-          echo "✅ 构建大功告成！"
+          echo "✅ 构建完成！"
 
       - name: Get Current Date
         id: info
         run: echo "DATE=$(date +'%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      # 部署到各个输出分支
+      # 部署
       - name: Deploy Raw Text
         uses: peaceiris/actions-gh-pages@v3
         with:
