@@ -2,8 +2,8 @@ name: Build Sing-box SRS Rules2
 
 on:
   schedule:
-    - cron: '0 22 * * *'
-  workflow_dispatch:
+    - cron: '0 22 * * *' # 每天北京时间早晨 6 点执行
+  workflow_dispatch:   # 支持手动触发
 
 permissions:
   contents: write
@@ -29,10 +29,9 @@ jobs:
           mv sing-box-*-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
 
-      - name: 批量下载并合并上游规则 (仅保留指定 5 个源)
+      - name: 批量下载并合并上游规则
         run: |
           echo "开始批量下载 5 个指定的上游规则..."
-          
           URLS=(
             "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt"
             "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt"
@@ -43,100 +42,117 @@ jobs:
           
           for url in "${URLS[@]}"; do
             echo "正在下载: $url"
-            
-            # 使用 -f 参数，若 HTTP 状态码 >=400 则返回错误码，配合重试，失败时直接终止流水线
+            # -sfL: 静默但报错、跟随重定向；--retry: 失败重试
             if ! curl -sfL --retry 3 --retry-delay 5 --retry-all-errors "$url" >> adguard_rules_raw.txt; then
-              echo "❌ 致命错误: 规则源下载失败，流水线已被强制阻断 -> $url"
+              echo "❌ 致命错误: 规则源下载失败 -> $url"
               exit 1
             fi
-            
             echo -e "\n" >> adguard_rules_raw.txt
           done
 
-      - name: 编写并执行 Python 深度清洗脚本
+      - name: 深度清洗与父域名去重 (Python)
         run: |
-          echo "开始执行深度清洗与去重..."
+          echo "开始执行深度清洗、去重及父域名冗余移除..."
           cat << 'EOF' > clean_rules.py
           import re
 
           input_file = 'adguard_rules_raw.txt'
           output_file = 'adguard_rules_clean.txt'
-          unique_rules = set()
 
+          # 正则预编译
           hosts_pattern = re.compile(r'^(?:127\.0\.0\.1|0\.0\.0\.0|::1)\s+([a-zA-Z0-9.-]+)$')
           ip_rule_pattern = re.compile(r'^\|\|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\^?$')
-          # 用于提取标准拦截规则域名的正则
           domain_extract_pattern = re.compile(r'^\|\|([a-zA-Z0-9.-]+)(?:\^.*)?$')
 
+          unique_rules = set()
+
+          # 第一步：提取、归一化并基础过滤
           with open(input_file, 'r', encoding='utf-8', errors='ignore') as f:
               for line in f:
-                  line = line.strip()
+                  line = line.strip().lower()
                   
-                  if not line or line.startswith('!') or line.startswith('#'):
+                  if not line or any(line.startswith(x) for x in ['!', '#', '@@']):
                       continue
-                  if '##' in line or '#?#' in line or '$$' in line:
+                  if any(x in line for x in ['##', '#?#', '$$']):
                       continue
-                  if line.startswith('@@'):
-                      continue
-                  if line in ('||^', '||', '^'):
-                      continue
-                  if ip_rule_pattern.match(line):
+                  if line in ('||^', '||', '^') or ip_rule_pattern.match(line):
                       continue
                   
-                  # 过滤明显无效域名
-                  domain_match = domain_extract_pattern.match(line)
-                  if domain_match:
-                      domain = domain_match.group(1)
-                      # 过滤非法格式：包含连续的点、以点或连字符开头/结尾
+                  # 统一转换格式
+                  domain = None
+                  adg_match = domain_extract_pattern.match(line)
+                  host_match = hosts_pattern.match(line)
+                  
+                  if adg_match:
+                      domain = adg_match.group(1)
+                  elif host_match:
+                      domain = host_match.group(1)
+                  elif re.match(r'^[a-zA-Z0-9.-]+$', line): # 纯域名格式
+                      domain = line
+
+                  if domain:
+                      # 排除非法域名格式和本地回环
                       if '..' in domain or domain.startswith('.') or domain.startswith('-') or domain.endswith('-'):
                           continue
-
-                  match = hosts_pattern.match(line)
-                  if match:
-                      domain = match.group(1)
-                      if domain in ('localhost', 'broadcasthost', 'local'):
+                      if domain in ('localhost', 'broadcasthost', 'local', 'ip6-localhost'):
                           continue
-                      line = f'0.0.0.0 {domain}'
-                      
-                  unique_rules.add(line)
+                      unique_rules.add(domain)
 
+          # 第二步：父域名去重 (Parent Domain Deduction)
+          # 按域名长度排序，先处理父域名
+          sorted_domains = sorted(list(unique_rules), key=len)
+          final_domains = set()
+          
+          for d in sorted_domains:
+              parts = d.split('.')
+              is_redundant = False
+              # 逐级向上检查父级是否存在于结果集中
+              for i in range(1, len(parts)):
+                  parent = '.'.join(parts[i:])
+                  if parent in final_domains:
+                      is_redundant = True
+                      break
+              if not is_redundant:
+                  final_domains.add(d)
+
+          # 第三步：以 AdGuard 语法输出
           with open(output_file, 'w', encoding='utf-8') as f:
-              for rule in sorted(unique_rules):
-                  f.write(rule + '\n')
+              for d in sorted(list(final_domains)):
+                  f.write(f"||{d}^\n")
           EOF
           
           python3 clean_rules.py
 
-      - name: 统计规则数量
+      - name: 编译多格式成果 (SRS & JSON)
         id: count
         run: |
           RULE_COUNT=$(wc -l < adguard_rules_clean.txt)
-          echo "总有效规则数: $RULE_COUNT"
           echo "rule_count=$RULE_COUNT" >> $GITHUB_OUTPUT
-
-      - name: 编译为 sing-box SRS 格式
-        run: |
-          echo "正在将清洗后的规则编译为 srs 格式..."
+          
+          # 编译为二进制 SRS
           ./sing-box rule-set convert --type adguard adguard_rules_clean.txt -o adguard.srs
+          # 同时生成可读的 JSON 方便检查
+          ./sing-box rule-set convert --type adguard adguard_rules_clean.txt -o adguard.json
 
-      - name: 创建 Release 发布成果
+      - name: 创建 Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.date.outputs.release_tag }}
-          name: 终极去广告规则 - ${{ steps.count.outputs.rule_count }}条 (${{ steps.date.outputs.release_tag }})
+          name: 🛡️ 终极去广告规则 [${{ steps.count.outputs.rule_count }} 条]
           files: |
             adguard.srs
+            adguard.json
             adguard_rules_clean.txt
           body: |
-            完全遵循 sing-box 1.10.0+ 官方规范构建的顶级去广告规则集。
+            完全遵循 sing-box 1.10.0+ 官方规范构建。
             
             📊 **统计信息**
-            - 最终有效规则数：**${{ steps.count.outputs.rule_count }}** 条
+            - 有效规则总数：**${{ steps.count.outputs.rule_count }}** 条
             
-            ✨ **近期构建优化**
-            - 支持严格错误检测：任一上游失效直接阻断构建，拒绝生成残缺规则集
-            - 新增明显无效域名正则过滤（剔除含 `..` 等非法域名）
-            - 自动清理过期版本，仓库更整洁
+            ✨ **构建亮点**
+            - **父域名去重**：已自动剔除被覆盖的子域名，极大降低内存开销。
+            - **异常拦截**：若上游源失效，自动阻断发布。
+            - **多格式支持**：提供二进制 `.srs` 及明文 `.json`。
           draft: false
           prerelease: false
         env:
