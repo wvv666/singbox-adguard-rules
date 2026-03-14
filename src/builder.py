@@ -10,16 +10,17 @@ import gzip
 from io import BytesIO
 from publicsuffixlist import PublicSuffixList
 
-# --- 初始化 ---
+# --- 全局初始化 ---
+# 公共后缀列表初始化，仅使用官方原生API
 psl = PublicSuffixList()
 
-# 规则匹配正则（全格式兼容）
+# 规则格式匹配正则
 hosts_pattern = re.compile(r'^(?:127\.0\.0\.1|0\.0\.0\.0|::1)\s+([a-zA-Z0-9.-]+)$')
 strict_domain_pattern = re.compile(r'^\|\|([a-zA-Z0-9.-]+)\^?$')
 pure_domain_pattern = re.compile(r'^[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+$')
 dnsmasq_pattern = re.compile(r'^(?:server|address)=/([a-zA-Z0-9.-]+)/')
 
-# 域名去重字典树
+# 域名去重字典树（子域名自动压缩）
 class DomainTrie:
     def __init__(self): 
         self.root = {}
@@ -46,7 +47,7 @@ def download_with_retry(url, source_name, retries=3):
             with urllib.request.urlopen(req, timeout=15) as resp:
                 content_encoding = resp.getheader('Content-Encoding')
                 raw_data = resp.read()
-                # 自动解压gzip内容
+                # 自动解压gzip压缩内容
                 if content_encoding == 'gzip':
                     with gzip.GzipFile(fileobj=BytesIO(raw_data)) as f:
                         return f.read().decode('utf-8', errors='ignore')
@@ -57,15 +58,15 @@ def download_with_retry(url, source_name, retries=3):
     print(f"❌ 下载失败: {source_name}")
     return None
 
-# 规则解析核心函数（彻底修复公共后缀判断，无任何错误API调用）
+# 规则解析核心函数（全程无错误API调用）
 def parse_rule(line, is_whitelist=False):
     line = line.strip()
-    # 跳过空行和注释
+    # 跳过空行和注释行
     if not line or line.startswith(('!', '#')): 
         return None, None
     
     domain = None
-    # 白名单规则解析
+    # 白名单规则优先解析
     if is_whitelist:
         m = dnsmasq_pattern.match(line)
         if m: 
@@ -81,7 +82,7 @@ def parse_rule(line, is_whitelist=False):
                 domain = m.group(1)
                 break
     
-    # 域名合法性校验
+    # 域名合法性全量校验
     if domain:
         domain = domain.lower()
         # 过滤IP地址
@@ -92,21 +93,16 @@ def parse_rule(line, is_whitelist=False):
             pass
         
         # 过滤本地保留域名
-        if domain in ('localhost', 'local', 'localhost.localdomain'): 
+        if domain in ('localhost', 'local', 'localhost.localdomain', 'broadcasthost'): 
             return None, None
         
-        # === 彻底修复：仅使用publicsuffixlist官方API做校验 ===
-        # 全程无is_public_suffix调用，100%兼容原生库
+        # 公共后缀合法性校验（仅使用官方原生API，无任何错误调用）
         try:
-            # 获取域名的公共后缀部分（官方唯一核心API）
             public_suffix = psl.publicsuffix(domain)
-            # 过滤无效域名：
-            # 1. 域名本身就是公共后缀（如 com、co.uk）
-            # 2. 无有效公共后缀（如 test.abc、xxx.local）
+            # 过滤无效域名：1. 域名本身就是公共后缀 2. 无有效公共后缀
             if public_suffix == domain or not public_suffix:
                 return None, None
-        except Exception as e:
-            print(f"⚠️ 域名校验失败 {domain}: {e}")
+        except Exception:
             return None, None
         
         return 'domain', domain
@@ -131,7 +127,7 @@ def fetch_worker(source, is_whitelist=False):
             raws.add(val)
     return {"domains": domains, "raws": raws, "source": source}
 
-# 主函数
+# 主程序入口
 def main():
     # 读取配置文件
     try:
@@ -156,7 +152,7 @@ def main():
     all_sources = [(s, False) for s in config.get('upstream_rules', [])] + \
                   [(s, True) for s in config.get('whitelist', [])]
     
-    # 并发下载解析
+    # 并发下载与解析
     print("🔄 开始下载并解析规则...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         futures = [executor.submit(fetch_worker, s, is_w) for s, is_w in all_sources]
@@ -171,11 +167,11 @@ def main():
             prio = src.get('priority', 0)
             stype = src.get('type', 'ad')
             
-            # 更新统计
+            # 更新统计数据
             stats_key = stype if stype in stats else "ad"
             stats[stats_key] += len(d_set) + len(r_set)
             
-            # 更新规则路由表
+            # 更新规则路由表（高优先级覆盖低优先级）
             for d in d_set:
                 if d not in routing or prio > routing[d]['priority']:
                     routing[d] = {
@@ -197,13 +193,13 @@ def main():
     # 创建输出目录
     os.makedirs('rules', exist_ok=True)
     
-    # 预构建白名单字典树，提前过滤无效子域名
+    # 预构建白名单字典树，提前过滤白名单域名的子域名，减少无效规则
     whitelist_trie = DomainTrie()
     for d, v in routing.items():
         if v['type'] == 'allow':
             whitelist_trie.insert_and_check(d)
     
-    # 分层生成规则文件
+    # 分层级生成最终规则文件
     for tier in ['lite', 'full', 'extreme']:
         # 筛选当前层级的拦截域名
         allowed_tiers = {
@@ -225,13 +221,13 @@ def main():
         
         # 写入规则文件
         with open(f'rules/{tier}.txt', 'w', encoding='utf-8') as f:
-            # 写入拦截域名
+            # 写入拦截域名规则
             for d in compressed_domains:
                 f.write(f"||{d}^\n")
             # 写入原生复杂规则
             for r in sorted(tier_raws[tier]):
                 f.write(f"{r}\n")
-            # 写入全局白名单
+            # 写入全局白名单规则
             for d, v in routing.items():
                 if v['type'] == 'allow':
                     f.write(f"@@||{d}^\n")
@@ -243,7 +239,7 @@ def main():
     with open('rules/stats.json', 'w', encoding='utf-8') as f:
         json.dump(stats, f, indent=2, ensure_ascii=False)
     
-    # 输出结果
+    # 输出最终结果
     print("\n✅ 规则构建完成！")
     print(f"📊 构建统计：{json.dumps(stats, indent=2, ensure_ascii=False)}")
 
