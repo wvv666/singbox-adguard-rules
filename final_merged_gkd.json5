@@ -1,0 +1,1694 @@
+{
+id:9999,
+name:'AI合并订阅 - 整合多个优质订阅源',
+version:1,
+author:'AI助手合并',
+checkUpdateUrl:'./merged_gkd.version.json5',
+supportUri:'https://github.com/',
+categories:[
+{key:-1,name:'权限提示',enable:false},
+{key:0,name:'开屏广告'},
+{key:1,name:'青少年模式',enable:false},
+{key:2,name:'更新提示',enable:false},
+{key:3,name:'评价提示',enable:false},
+{key:4,name:'通知提示',enable:false},
+{key:5,name:'定位提示',enable:false},
+{key:6,name:'局部广告',enable:false},
+{key:7,name:'全屏广告',enable:false},
+{key:8,name:'分段广告',enable:false},
+{key:9,name:'功能类',enable:false},
+{key:10,name:'其他',enable:false}
+],
+globalGroups:[
+{
+key:0,
+name:'开屏广告-全局',
+desc:'点击跳过应用启动时的开屏广告',
+order:-10,
+matchTime:9000,
+fastQuery:true,
+resetMatch:'app',
+actionMaximum:2,
+actionMaximumKey:0,
+rules:[
+{
+key:0,
+matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+}
+],
+apps:[
+{id:'com.tencent.mm',enable:false},
+{id:'li.songe.gkd',enable:false},
+{id:'com.eg.android.AlipayGphone',enable:false},
+{id:'mark.via',enable:false},
+{id:'mark.via.gp',enable:false},
+{id:'com.mmbox.xbrowser',enable:false},
+{id:'com.mmbox.xbrowser.pro',enable:false},
+{id:'com.mycompany.app.soulbrowser',enable:false}
+]
+},
+{
+key:1,
+name:'更新提示-全局',
+desc:'关闭应用更新提示弹窗',
+order:-9,
+matchTime:10000,
+fastQuery:true,
+resetMatch:'app',
+actionMaximum:1,
+rules:[
+{
+key:0,
+matches:['[text*="更新"||text*="新版"||text*="升级"||text*="体验"]','[text="取消"||text="忽略"||text="暂不"||text="以后再说"]']
+}
+],
+apps:[
+{id:'com.tencent.mm',enable:false},
+{id:'li.songe.gkd',enable:false},
+{id:'com.eg.android.AlipayGphone',enable:false}
+]
+},
+{
+key:2,
+name:'青少年模式-全局',
+desc:'关闭青少年模式提示',
+order:-8,
+matchTime:10000,
+fastQuery:true,
+resetMatch:'app',
+actionMaximum:1,
+rules:[
+{
+key:0,
+matches:['[text*="青少年"||text*="未成年"||text*="儿童"]','[text="我知道了"||text="知道了"||text="关闭"]']
+}
+],
+apps:[
+{id:'com.tencent.mm',enable:false},
+{id:'li.songe.gkd',enable:false}
+]
+}
+],
+apps:[
+{id:'Han.GJZS',name:'Han.GJZS',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'air.tv.douyu.android',name:'air.tv.douyu.android',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'app.eleven.com.fastfiletransfer',name:'app.eleven.com.fastfiletransfer',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'app.mihon',name:'app.mihon',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'app.rikka.savecopy',name:'app.rikka.savecopy',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'bin.mt.plus',name:'bin.mt.plus',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'bin.mt.plus.canary',name:'bin.mt.plus.canary',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cc.aoeiuv020.iamnotdisabled',name:'cc.aoeiuv020.iamnotdisabled',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cc.aoeiuv020.iamnotdisabled.hook',name:'cc.aoeiuv020.iamnotdisabled.hook',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cc.microblock.TGStickerProvider',name:'cc.microblock.TGStickerProvider',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cmb.pb',name:'cmb.pb',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cmccwm.mobilemusic',name:'cmccwm.mobilemusic',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.TuHu.android',name:'cn.TuHu.android',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.cntvnews',name:'cn.cntvnews',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.com.cmbc.newmbank',name:'cn.com.cmbc.newmbank',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.com.ruijie.magicbox',name:'cn.com.ruijie.magicbox',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.com.spdb.mobilebank.per',name:'cn.com.spdb.mobilebank.per',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.cty.hbzw',name:'cn.cty.hbzw',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.damai',name:'cn.damai',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.edu.buaa.wxwork',name:'cn.edu.buaa.wxwork',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.gov.pbc.dcep',name:'cn.gov.pbc.dcep',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.honor.qinxuan',name:'cn.honor.qinxuan',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.kuwo.player',name:'cn.kuwo.player',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.lyric.getter',name:'cn.lyric.getter',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.mil.junhao',name:'cn.mil.junhao',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.samsclub.app',name:'cn.samsclub.app',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.soulapp.android',name:'cn.soulapp.android',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.speedtest.lite',name:'cn.speedtest.lite',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.tinyhai.ban_uninstall',name:'cn.tinyhai.ban_uninstall',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.wps.moffice_eng',name:'cn.wps.moffice_eng',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.wps.moffice_eng.xiaomi.lite',name:'cn.wps.moffice_eng.xiaomi.lite',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.wps.yun',name:'cn.wps.yun',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.wsds.gamemaster',name:'cn.wsds.gamemaster',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.xiaochuankeji.tieba',name:'cn.xiaochuankeji.tieba',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'cn.xuexi.android',name:'cn.xuexi.android',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.UCMobile',name:'com.UCMobile',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.able.wisdomtree',name:'com.able.wisdomtree',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.absinthe.libchecker',name:'com.absinthe.libchecker',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.accessibilitymanager',name:'com.accessibilitymanager',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.adguard.android',name:'com.adguard.android',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.adguard.android.contentblocker',name:'com.adguard.android.contentblocker',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.adobe.reader',name:'com.adobe.reader',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.ai.obc.cbn.app',name:'com.ai.obc.cbn.app',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.aistra.hail',name:'com.aistra.hail',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.aiwu.market',name:'com.aiwu.market',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.alibaba.ailabs.tg',name:'com.alibaba.ailabs.tg',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.alibaba.aliyun',name:'com.alibaba.aliyun',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.alibaba.android.rimet',name:'com.alibaba.android.rimet',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.alibaba.wireless',name:'com.alibaba.wireless',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.alicloud.databox',name:'com.alicloud.databox',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.VideoPlayer',name:'com.android.VideoPlayer',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.bankabc',name:'com.android.bankabc',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.browser',name:'com.android.browser',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.calendar',name:'com.android.calendar',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.chrome',name:'com.android.chrome',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.contacts',name:'com.android.contacts',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.deskclock',name:'com.android.deskclock',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.email',name:'com.android.email',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.icredit',name:'com.android.icredit',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.mediacenter',name:'com.android.mediacenter',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.packageinstaller',name:'com.android.packageinstaller',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.providers.downloads.ui',name:'com.android.providers.downloads.ui',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.quicksearchbox',name:'com.android.quicksearchbox',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.samsung.utilityapp',name:'com.android.samsung.utilityapp',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.soundrecorder',name:'com.android.soundrecorder',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.thememanager',name:'com.android.thememanager',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.updater',name:'com.android.updater',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.android.vending',name:'com.android.vending',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.antfortune.wealth',name:'com.antfortune.wealth',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.apkpure.aegon',name:'com.apkpure.aegon',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.arn.scrobble',name:'com.arn.scrobble',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.assistant.ongoingclear',name:'com.assistant.ongoingclear',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.ataaw.tianyi',name:'com.ataaw.tianyi',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.autonavi.minimap',name:'com.autonavi.minimap',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.azure.authenticator',name:'com.azure.authenticator',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.BaiduMap',name:'com.baidu.BaiduMap',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.duer.superapp',name:'com.baidu.duer.superapp',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.haokan',name:'com.baidu.haokan',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.homework',name:'com.baidu.homework',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.input',name:'com.baidu.input',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.netdisk',name:'com.baidu.netdisk',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.netdisk.samsung',name:'com.baidu.netdisk.samsung',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.newapp',name:'com.baidu.newapp',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.searchbox',name:'com.baidu.searchbox',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.tieba',name:'com.baidu.tieba',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.xin.aiqicha',name:'com.baidu.xin.aiqicha',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.baidu.youavideo',name:'com.baidu.youavideo',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.bankcomm.Bankcomm',name:'com.bankcomm.Bankcomm',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.banshenghuo.mobile.ofdm',name:'com.banshenghuo.mobile.ofdm',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.bbk.appstore',name:'com.bbk.appstore',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.bbk.theme',name:'com.bbk.theme',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.bilibili.app.in',name:'com.bilibili.app.in',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.bilibili.comic',name:'com.bilibili.comic',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.bilibili.studio',name:'com.bilibili.studio',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.boohee.one',name:'com.boohee.one',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.brakefield.painter',name:'com.brakefield.painter',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.bug.hookvip',name:'com.bug.hookvip',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.bw30.zsch',name:'com.bw30.zsch',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.byd.aeri.caranywhere',name:'com.byd.aeri.caranywhere',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]},
+{id:'com.byfen.market',name:'com.byfen.market',groups:[
+  {
+  key:0,
+  name:'示例规则-开屏广告',
+  desc:'点击跳过开屏广告',
+  matchTime:10000,
+  actionMaximum:1,
+  resetMatch:'app',
+  rules:[
+    {
+    key:0,
+    matches:'[text*="跳过"][text.length<10][visibleToUser=true]'
+    }
+  ]
+  }
+]}
+]
+}
