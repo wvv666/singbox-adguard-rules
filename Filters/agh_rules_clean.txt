@@ -407,4 +407,9 @@
 ||dg.k.jd.com^
 ||cnlogs.umeng.com^
 ||errnewlog.umeng.com^
+||pic3.zhimg.com^
+||duga.zhihu.com^
+||cbsipv4.shuzilm.cn^
+||appcloud.zhihu.com^
+||m-cloud.zhihu.com^
 
