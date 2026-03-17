@@ -1,3 +1,4 @@
+@@||i.ilife798.com^
 @@||api-cn.store.heytapmobi.com^$important
 ||*.heytapmobi.com^
 ||events.data.microsoft.com^
@@ -407,7 +408,6 @@
 ||dg.k.jd.com^
 ||cnlogs.umeng.com^
 ||errnewlog.umeng.com^
-||pic*.zhimg.com^
 ||duga.zhihu.com^
 ||cbsipv4.shuzilm.cn^
 ||appcloud.zhihu.com^
