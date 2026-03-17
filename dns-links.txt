@@ -1,2 +1,0 @@
-https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt
-https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdnslite.txt
