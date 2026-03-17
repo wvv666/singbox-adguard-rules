@@ -1,10 +1,12 @@
-name: Convert AdGuard Rules to sing-box SRS
+name: Build sing-box SRS Rules
 
 on:
   push:
     paths:
-      - 'agh_rules_clean.txt'
+      - 'Filters/*.txt'
+      - 'Filters/*.json'
   workflow_dispatch:
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -14,18 +16,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 安装依赖
-        run: sudo apt-get update && sudo apt-get install -y jq curl wget
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl wget
 
       - name: 获取并安装最新版 sing-box
         run: |
           set -e
 
+          echo "获取最新版本..."
+
           VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "获取版本失败"
+            exit 1
+          fi
+
           echo "Latest sing-box version: $VERSION"
 
           FILE="sing-box-${VERSION#v}-linux-amd64.tar.gz"
 
-          wget -q "https://github.com/SagerNet/sing-box/releases/download/${VERSION}/${FILE}"
+          wget -q --show-progress "https://github.com/SagerNet/sing-box/releases/download/${VERSION}/${FILE}"
 
           tar -xzf "$FILE"
 
@@ -33,26 +45,60 @@ jobs:
 
           sing-box version
 
-      - name: 转换 AdGuard 规则为 SRS
+      - name: 转换及编译规则为 SRS
         run: |
           set -e
 
-          rm -f agh_rules_clean.srs
+          cd Filters/
 
-          sing-box rule-set convert \
-            --type adguard \
-            --output agh_rules_clean.srs \
-            agh_rules_clean.txt
+          shopt -s nullglob
+
+          echo "====== 开始处理 TXT (AdGuard) ======"
+
+          for txt_file in *.txt; do
+            filename="${txt_file%.txt}"
+
+            echo "[TXT] $txt_file -> ${filename}.srs"
+
+            rm -f "${filename}.srs"
+
+            sing-box rule-set convert \
+              --type adguard \
+              --output "${filename}.srs" \
+              "$txt_file"
+          done
+
+          echo "====== 开始处理 JSON ======"
+
+          for json_file in *.json; do
+            filename="${json_file%.json}"
+
+            echo "[JSON] $json_file -> ${filename}.srs"
+
+            rm -f "${filename}.srs"
+
+            sing-box rule-set compile \
+              --output "${filename}.srs" \
+              "$json_file"
+          done
 
       - name: 提交并推送
         run: |
+          set -e
+
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add agh_rules_clean.srs
+          # 避免没有文件时报错
+          if ls Filters/*.srs 1> /dev/null 2>&1; then
+            git add Filters/*.srs
+          else
+            echo "没有生成 .srs 文件"
+            exit 0
+          fi
 
           if ! git diff --cached --quiet; then
-            git commit -m "Auto update SRS rules [skip ci]"
+            git commit -m "Auto update and compile SRS rules [skip ci]"
             git push
           else
             echo "No changes, skip commit"
