@@ -3,52 +3,57 @@ name: Convert AdGuard Rules to sing-box SRS
 on:
   push:
     paths:
-      - 'agh_rules_clean.txt' # 当这个 txt 文件发生变动时自动触发
-  workflow_dispatch: # 允许在 GitHub Actions 页面手动点击运行
-  schedule:
-    - cron: '0 2 * * *' # 每天 UTC 时间 2:00（北京时间 10:00）自动运行一次
-
+      - 'agh_rules_clean.txt'
+  workflow_dispatch:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出当前仓库代码
+      - name: 检出仓库代码
         uses: actions/checkout@v4
+
+      - name: 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y jq curl wget
 
       - name: 获取并安装最新版 sing-box
         run: |
-          # 调用 GitHub API 抓取 sing-box 最新 Release 的版本号
-          VERSION=$(curl -s "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | jq -r .tag_name)
-          echo "Latest sing-box version is $VERSION"
-          
-          # 下载对应的 linux-amd64 压缩包
-          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${VERSION}/sing-box-${VERSION#v}-linux-amd64.tar.gz"
-          
-          # 解压并将可执行文件提取到系统环境中
-          tar -xzf sing-box.tar.gz
+          set -e
+
+          VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          echo "Latest sing-box version: $VERSION"
+
+          FILE="sing-box-${VERSION#v}-linux-amd64.tar.gz"
+
+          wget -q "https://github.com/SagerNet/sing-box/releases/download/${VERSION}/${FILE}"
+
+          tar -xzf "$FILE"
+
           sudo cp sing-box-*/sing-box /usr/local/bin/
-          
-          # 验证是否安装成功
+
           sing-box version
 
       - name: 转换 AdGuard 规则为 SRS
         run: |
-          # 核心转换命令，使用 --type adguard 告知 sing-box 输入文件的格式
-          sing-box rule-set convert --type adguard --output agh_rules_clean.srs agh_rules_clean.txt
+          set -e
 
-      - name: 提交并推送生成的 srs 文件
+          rm -f agh_rules_clean.srs
+
+          sing-box rule-set convert \
+            --type adguard \
+            --output agh_rules_clean.srs \
+            agh_rules_clean.txt
+
+      - name: 提交并推送
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           git add agh_rules_clean.srs
-          
-          # 仅在文件发生了实际变动时才提交，避免产出垃圾 commit
+
           if ! git diff --cached --quiet; then
-            git commit -m "Auto-convert agh_rules_clean.txt to SRS format [skip ci]"
+            git commit -m "Auto update SRS rules [skip ci]"
             git push
           else
-            echo "No changes in SRS file, skipping commit."
+            echo "No changes, skip commit"
           fi
-
