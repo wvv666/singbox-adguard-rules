@@ -401,4 +401,9 @@
 @@||grpc.biliapi.net^$important
 ||c.sayhi.360.cn^
 ||scene-bind-cn.allawntech.com^
+||shence-import.smzdm.com^
+||haojia-cdn.smzdm.com^
+||dg.k.jd.com^
+||cnlogs.umeng.com^
+||errnewlog.umeng.com^
 
