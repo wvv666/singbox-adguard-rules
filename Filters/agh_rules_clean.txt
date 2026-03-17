@@ -1,7 +1,3 @@
-# AdGuardHome 命中规则（纯净版）
-# 生成时间: 2026-03-17 15:50:37
-# 共 402 条规则，按命中次数排序
-
 ||*.heytapmobi.com^
 ||events.data.microsoft.com^
 ||aeventlog.beacon.qq.com^
@@ -404,3 +400,5 @@
 @@||imtt.dd.qq.com^$important
 @@||grpc.biliapi.net^$important
 ||c.sayhi.360.cn^
+||scene-bind-cn.allawntech.com^
+
