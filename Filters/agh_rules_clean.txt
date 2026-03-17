@@ -1,3 +1,4 @@
+@@||api-cn.store.heytapmobi.com^$important
 ||*.heytapmobi.com^
 ||events.data.microsoft.com^
 ||aeventlog.beacon.qq.com^
