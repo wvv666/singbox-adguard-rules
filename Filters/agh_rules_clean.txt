@@ -412,3 +412,5 @@
 ||cbsipv4.shuzilm.cn^
 ||appcloud.zhihu.com^
 ||m-cloud.zhihu.com^
+||*.umeng.com^$important
+
