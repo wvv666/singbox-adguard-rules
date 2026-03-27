@@ -7,6 +7,10 @@ on:
       - 'Filters/*.json'
   workflow_dispatch:
 
+# 显式授予推送代码所需的权限
+permissions:
+  contents: write
+
 jobs:
   build-and-push:
     runs-on: self-hosted
@@ -15,18 +19,23 @@ jobs:
       - name: 检出仓库代码
         uses: actions/checkout@v4
 
-      - name: 安装依赖
+      # 建议在自建服务器上提前手动装好依赖，若一定要自动检查，可去掉 sudo
+      - name: 检查并安装依赖
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl wget
+          if ! command -v jq &> /dev/null || ! command -v curl &> /dev/null || ! command -v wget &> /dev/null; then
+            echo "缺少必要依赖，请在 Runner 主机上手动安装: jq, curl, wget"
+            exit 1
+          fi
 
-      - name: 获取并安装最新版 sing-box
+      - name: 获取并安装最新版 sing-box (局部安装)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-
           echo "获取最新版本..."
-
-          VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          
+          # 使用 GITHUB_TOKEN 避免 API 限流
+          VERSION=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
 
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
             echo "获取版本失败"
@@ -35,61 +44,60 @@ jobs:
 
           echo "Latest sing-box version: $VERSION"
 
-          FILE="sing-box-${VERSION#v}-linux-amd64.tar.gz"
+          # 动态判断架构 (增加兼容性)
+          ARCH=$(uname -m)
+          case $ARCH in
+            x86_64) SING_ARCH="amd64" ;;
+            aarch64) SING_ARCH="arm64" ;;
+            *) echo "不支持的架构: $ARCH"; exit 1 ;;
+          esac
+
+          FILE="sing-box-${VERSION#v}-linux-${SING_ARCH}.tar.gz"
 
           wget -q --show-progress "https://github.com/SagerNet/sing-box/releases/download/${VERSION}/${FILE}"
-
           tar -xzf "$FILE"
 
-          sudo cp sing-box-*/sing-box /usr/local/bin/
+          # 将 sing-box 移动到当前工作目录（不需要 sudo）
+          mkdir -p ./bin
+          mv sing-box-*/sing-box ./bin/
+          chmod +x ./bin/sing-box
 
-          sing-box version
+          # 清理压缩包和解压文件夹
+          rm -rf "$FILE" sing-box-*/
+
+          ./bin/sing-box version
 
       - name: 转换及编译规则为 SRS
         run: |
           set -e
-
           cd Filters/
-
           shopt -s nullglob
 
           echo "====== 开始处理 TXT (AdGuard) ======"
-
           for txt_file in *.txt; do
             filename="${txt_file%.txt}"
-
             echo "[TXT] $txt_file -> ${filename}.srs"
-
             rm -f "${filename}.srs"
-
-            sing-box rule-set convert \
-              --type adguard \
-              --output "${filename}.srs" \
-              "$txt_file"
+            
+            # 使用局部路径的 sing-box
+            ../bin/sing-box rule-set convert --type adguard --output "${filename}.srs" "$txt_file"
           done
 
           echo "====== 开始处理 JSON ======"
-
           for json_file in *.json; do
             filename="${json_file%.json}"
-
             echo "[JSON] $json_file -> ${filename}.srs"
-
             rm -f "${filename}.srs"
-
-            sing-box rule-set compile \
-              --output "${filename}.srs" \
-              "$json_file"
+            
+            ../bin/sing-box rule-set compile --output "${filename}.srs" "$json_file"
           done
 
       - name: 提交并推送
         run: |
           set -e
-
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 避免没有文件时报错
           if ls Filters/*.srs 1> /dev/null 2>&1; then
             git add Filters/*.srs
           else
@@ -101,5 +109,5 @@ jobs:
             git commit -m "Auto update and compile SRS rules [skip ci]"
             git push
           else
-            echo "No changes, skip commit"
+            echo "规则无变化，跳过提交"
           fi
