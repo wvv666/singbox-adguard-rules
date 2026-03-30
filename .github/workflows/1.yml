@@ -1,4 +1,4 @@
-name: Sync AWAvenue Rule
+name: Sync Ad Rules
 
 on:
   schedule:
@@ -10,22 +10,29 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # 赋予推送到仓库的权限
-    
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download Rule File
+      - name: Download Rule Files
         run: |
-          # 创建存放文件的文件夹（如果你想放在根目录，可以删除 mkdir 这行，并修改下方 -o 的路径）
+          # 创建存放文件的文件夹
           mkdir -p Filters
+          
+          # 下载 AWAvenue 规则 (Sing-box)
           curl -sL https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/Filters/AWAvenue-Ads-Rule-Singbox.json -o Filters/AWAvenue-Ads-Rule-Singbox.json
+          
+          # 下载 GOODBYEADS 规则
+          curl -sL https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt -o Filters/GOODBYEADS-dns.txt
 
       - name: Commit and Push
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add Filters/AWAvenue-Ads-Rule-Singbox.json
-          # 如果文件没有变化，则不提交
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update AWAvenue-Ads-Rule-Singbox.json" && git push)
-
+          
+          # 追踪 Filters 文件夹下的所有变动
+          git add Filters/
+          
+          # 如果文件没有变化，则不提交；如果有变动，则带上当前日期进行提交并推送
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update ad rules - $(date +'%Y-%m-%d')" && git push)
