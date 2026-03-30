@@ -1,113 +1,43 @@
-name: Build sing-box SRS Rules
+name: Compile Rules in Filters
 
 on:
   push:
     paths:
-      - 'Filters/*.txt'
-      - 'Filters/*.json'
+      - 'Filters/*.json' # 只有当 Filters 文件夹下的 json 变动时才触发
   workflow_dispatch:
 
-# 显式授予推送代码所需的权限
-permissions:
-  contents: write
-
 jobs:
-  build-and-push:
-    runs-on: self-hosted
+  compile:
+    runs-on: ubuntu-latest
+    # 设置权限，允许 Actions 推送代码到仓库
+    permissions:
+      contents: write
 
     steps:
-      - name: 检出仓库代码
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 建议在自建服务器上提前手动装好依赖，若一定要自动检查，可去掉 sudo
-      - name: 检查并安装依赖
+      - name: Install sing-box
         run: |
-          if ! command -v jq &> /dev/null || ! command -v curl &> /dev/null || ! command -v wget &> /dev/null; then
-            echo "缺少必要依赖，请在 Runner 主机上手动安装: jq, curl, wget"
-            exit 1
-          fi
+          # 安装最新版 sing-box 编译器
+          bash <(curl -L https://raw.githubusercontent.com/SagerNet/sing-box/main/release/install.sh)
 
-      - name: 获取并安装最新版 sing-box (局部安装)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compile Filters
         run: |
-          set -e
-          echo "获取最新版本..."
-          
-          # 使用 GITHUB_TOKEN 避免 API 限流
-          VERSION=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
-
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "获取版本失败"
-            exit 1
-          fi
-
-          echo "Latest sing-box version: $VERSION"
-
-          # 动态判断架构 (增加兼容性)
-          ARCH=$(uname -m)
-          case $ARCH in
-            x86_64) SING_ARCH="amd64" ;;
-            aarch64) SING_ARCH="arm64" ;;
-            *) echo "不支持的架构: $ARCH"; exit 1 ;;
-          esac
-
-          FILE="sing-box-${VERSION#v}-linux-${SING_ARCH}.tar.gz"
-
-          wget -q --show-progress "https://github.com/SagerNet/sing-box/releases/download/${VERSION}/${FILE}"
-          tar -xzf "$FILE"
-
-          # 将 sing-box 移动到当前工作目录（不需要 sudo）
-          mkdir -p ./bin
-          mv sing-box-*/sing-box ./bin/
-          chmod +x ./bin/sing-box
-
-          # 清理压缩包和解压文件夹
-          rm -rf "$FILE" sing-box-*/
-
-          ./bin/sing-box version
-
-      - name: 转换及编译规则为 SRS
-        run: |
-          set -e
-          cd Filters/
-          shopt -s nullglob
-
-          echo "====== 开始处理 TXT (AdGuard) ======"
-          for txt_file in *.txt; do
-            filename="${txt_file%.txt}"
-            echo "[TXT] $txt_file -> ${filename}.srs"
-            rm -f "${filename}.srs"
-            
-            # 使用局部路径的 sing-box
-            ../bin/sing-box rule-set convert --type adguard --output "${filename}.srs" "$txt_file"
+          cd Filters
+          for file in *.json; do
+            # 获取不带扩展名的文件名
+            filename="${file%.json}"
+            echo "Compiling $file to ${filename}.srs..."
+            # 明确指定输出路径在当前目录下
+            sing-box rule-set compile --output "${filename}.srs" "$file"
           done
 
-          echo "====== 开始处理 JSON ======"
-          for json_file in *.json; do
-            filename="${json_file%.json}"
-            echo "[JSON] $json_file -> ${filename}.srs"
-            rm -f "${filename}.srs"
-            
-            ../bin/sing-box rule-set compile --output "${filename}.srs" "$json_file"
-          done
-
-      - name: 提交并推送
+      - name: Git Push
         run: |
-          set -e
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-
-          if ls Filters/*.srs 1> /dev/null 2>&1; then
-            git add Filters/*.srs
-          else
-            echo "没有生成 .srs 文件"
-            exit 0
-          fi
-
-          if ! git diff --cached --quiet; then
-            git commit -m "Auto update and compile SRS rules [skip ci]"
-            git push
-          else
-            echo "规则无变化，跳过提交"
-          fi
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add Filters/*.srs
+          # 如果没有文件变动，git commit 会返回 1，使用 || exit 0 防止 workflow 报错中断
+          git commit -m "chore: auto-compile srs for Filters" || exit 0
+          git push
