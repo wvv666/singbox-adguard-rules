@@ -25,6 +25,9 @@ jobs:
           
           # 下载 GOODBYEADS 规则
           curl -sL https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt -o Filters/GOODBYEADS-dns.txt
+          
+          # 下载 10007 adb 规则
+          curl -sL https://lingeringsound.github.io/10007/adb.txt -o Filters/adb.txt
 
       - name: Commit and Push
         run: |
