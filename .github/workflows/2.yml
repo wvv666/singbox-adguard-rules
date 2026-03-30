@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'Filters/*.json'
+      - 'Filters/*.txt' # 添加对 txt 文件变动的监听
   workflow_dispatch:
 
 jobs:
@@ -29,20 +30,33 @@ jobs:
           sudo mv sing-box-*/sing-box /usr/local/bin/
           sing-box version
 
-      - name: Compile Filters
+      - name: Compile and Convert Filters
         run: |
           cd Filters
+          
+          # 开启 nullglob，防止某类文件不存在时循环报错
+          shopt -s nullglob 
+          
+          # 1. 编译 JSON 文件
           for file in *.json; do
             filename="${file%.json}"
-            echo "Compiling $file..."
-            # 使用 --compact 压缩输出可以进一步减小 srs 体积
+            echo "Compiling JSON: $file..."
             sing-box rule-set compile --output "${filename}.srs" "$file"
+          done
+          
+          # 2. 转换 TXT 文件 (AdGuard 格式)
+          for file in *.txt; do
+            filename="${file%.txt}"
+            echo "Converting TXT: $file..."
+            sing-box rule-set convert --type adguard --output "${filename}.srs" "$file"
           done
 
       - name: Git Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 提交所有生成的 .srs 文件
           git add Filters/*.srs
-          git commit -m "chore: auto-compile srs" || exit 0
+          git commit -m "chore: auto-compile and convert srs files" || exit 0
           git push
