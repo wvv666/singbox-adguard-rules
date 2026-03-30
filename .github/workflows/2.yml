@@ -3,13 +3,12 @@ name: Compile Rules in Filters
 on:
   push:
     paths:
-      - 'Filters/*.json' # 只有当 Filters 文件夹下的 json 变动时才触发
+      - 'Filters/*.json'
   workflow_dispatch:
 
 jobs:
   compile:
     runs-on: ubuntu-latest
-    # 设置权限，允许 Actions 推送代码到仓库
     permissions:
       contents: write
 
@@ -17,19 +16,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install sing-box
+      - name: Install sing-box (Stable Method)
         run: |
-          # 安装最新版 sing-box 编译器
-          bash <(curl -L https://raw.githubusercontent.com/SagerNet/sing-box/main/release/install.sh)
+          # 获取最新版本号并下载官方二进制文件
+          TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          VERSION=${TAG#v}
+          URL="https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${VERSION}-linux-amd64.tar.gz"
+          
+          curl -L "$URL" -o sing-box.tar.gz
+          tar -xzf sing-box.tar.gz
+          # 将可执行文件移动到系统路径
+          sudo mv sing-box-*/sing-box /usr/local/bin/
+          sing-box version
 
       - name: Compile Filters
         run: |
           cd Filters
           for file in *.json; do
-            # 获取不带扩展名的文件名
             filename="${file%.json}"
-            echo "Compiling $file to ${filename}.srs..."
-            # 明确指定输出路径在当前目录下
+            echo "Compiling $file..."
+            # 使用 --compact 压缩输出可以进一步减小 srs 体积
             sing-box rule-set compile --output "${filename}.srs" "$file"
           done
 
@@ -38,6 +44,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add Filters/*.srs
-          # 如果没有文件变动，git commit 会返回 1，使用 || exit 0 防止 workflow 报错中断
-          git commit -m "chore: auto-compile srs for Filters" || exit 0
+          git commit -m "chore: auto-compile srs" || exit 0
           git push
