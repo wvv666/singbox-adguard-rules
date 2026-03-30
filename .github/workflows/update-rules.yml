@@ -1,0 +1,37 @@
+name: Update Ad Rules
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天凌晨 0 点自动拉取更新
+  workflow_dispatch:    # 允许你随时手动点击运行
+
+jobs:
+  download-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 赋予 Workflow 写入权限
+
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Download the JSON file
+        run: |
+          # 创建存放目录（如果需要的话，比如放在 rules 文件夹下）
+          mkdir -p rules
+          
+          # 使用 curl 下载文件并重命名（或者保持原名）
+          curl -L "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/Filters/AWAvenue-Ads-Rule-Singbox.json" -o rules/AWAvenue-Ads-Rule-Singbox.json
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 检查文件是否有变化，有变化才提交
+          git add rules/AWAvenue-Ads-Rule-Singbox.json
+          if git diff --staged --quiet; then
+            echo "No changes detected, skipping commit."
+          else
+            git commit -m "chore: update AWAvenue-Ads-Rule-Singbox.json $(date +'%Y-%m-%d')"
+            git push
+          fi
