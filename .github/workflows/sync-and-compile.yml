@@ -1,0 +1,72 @@
+name: Sync and Compile Ad Rules
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Daily at UTC 02:00 (Beijing 10:00)
+  workflow_dispatch:
+
+jobs:
+  sync-and-compile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Rule Files
+        run: |
+          mkdir -p Filters
+
+          # AWAvenue Ads Rule (sing-box format)
+          curl -sL https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/Filters/AWAvenue-Ads-Rule-Singbox.json -o Filters/AWAvenue-Ads-Rule-Singbox.json
+
+          # GOODBYEADS DNS rules
+          curl -sL https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt -o Filters/GOODBYEADS-dns.txt
+
+          # 10007 ADB rules
+          curl -sL https://lingeringsound.github.io/10007/adb.txt -o Filters/adb.txt
+
+      - name: Install sing-box
+        run: |
+          TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          VERSION=${TAG#v}
+          URL="https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${VERSION}-linux-amd64.tar.gz"
+          curl -L "$URL" -o sing-box.tar.gz
+          tar -xzf sing-box.tar.gz
+          sudo mv sing-box-*/sing-box /usr/local/bin/
+          sing-box version
+
+      - name: Compile Filters
+        run: |
+          cd Filters
+          shopt -s nullglob
+
+          # Compile JSON files (sing-box rule-set format)
+          for file in *.json; do
+            filename="${file%.json}"
+            echo "Compiling JSON: $file..."
+            sing-box rule-set compile --output "${filename}.srs" "$file"
+          done
+
+          # Convert TXT files (AdGuard format)
+          for file in *.txt; do
+            filename="${file%.txt}"
+            echo "Converting TXT: $file..."
+            sing-box rule-set convert --type adguard --output "${filename}.srs" "$file"
+          done
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add Filters/
+
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto update ad rules - $(date +'%Y-%m-%d')"
+            git push
+          fi
