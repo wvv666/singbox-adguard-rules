@@ -145,6 +145,7 @@ def main():
         ("qq5460168-666-Singbox.json",     "666",        False),
         ("217heidai-adblockdns.txt",         "217heidai",  False),
         ("anti-ad.txt",                       "anti-AD",    False),
+        ("REIJI007-adblock_reject.json",      "REIJI007",   False),
         # Add more sources below, e.g.:
         # ("anti-ad.txt",                  "anti-AD",    False),
     ]

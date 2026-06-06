@@ -16,6 +16,7 @@ sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub 
 | 4 | [qq5460168/666](https://github.com/qq5460168/666) | sing-box JSON | 多格式去广告规则 |
 | 5 | [217heidai/adblockfilters](https://github.com/217heidai/adblockfilters) | AdGuard TXT | 合并去广告规则（16+ 上游） |
 | 6 | [anti-AD](https://github.com/privacy-protection-tools/anti-AD) | AdGuard TXT | 国内广告拦截 |
+| 7 | [REIJI007/AdBlock_Rule_For_Sing-box](https://github.com/REIJI007/AdBlock_Rule_For_Sing-box) | sing-box JSON | 综合广告拦截 |
 
 ## 编译产物
 
@@ -30,6 +31,7 @@ sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub 
 | `qq5460168-666-Singbox.srs` | 单源：666 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/qq5460168-666-Singbox.srs) |
 | `217heidai-adblockdns.srs` | 单源：217heidai | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/217heidai-adblockdns.srs) |
 | `anti-ad.srs` | 单源：anti-AD | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/anti-ad.srs) |
+| `REIJI007-adblock_reject.srs` | 单源：REIJI007 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/REIJI007-adblock_reject.srs) |
 
 单源文件保留供需要精细控制的用户。
 
