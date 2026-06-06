@@ -1,0 +1,3 @@
+*.srs binary
+*.json linguist-detectable=false
+*.txt linguist-detectable=false
