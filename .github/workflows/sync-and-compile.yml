@@ -87,10 +87,10 @@ jobs:
             echo "⚙️  Compiling JSON: $file..."
             if sing-box rule-set compile --output "${filename}.srs" "$file"; then
               echo "  ✅ ${filename}.srs ($(du -h "${filename}.srs" | cut -f1))"
-              ((SUCCESS++))
+              SUCCESS=$((SUCCESS + 1))
             else
               echo "  ❌ Failed to compile $file"
-              ((FAIL++))
+              FAIL=$((FAIL + 1))
             fi
           done
 
@@ -100,10 +100,10 @@ jobs:
             echo "⚙️  Converting TXT: $file..."
             if sing-box rule-set convert --type adguard --output "${filename}.srs" "$file"; then
               echo "  ✅ ${filename}.srs ($(du -h "${filename}.srs" | cut -f1))"
-              ((SUCCESS++))
+              SUCCESS=$((SUCCESS + 1))
             else
               echo "  ❌ Failed to convert $file"
-              ((FAIL++))
+              FAIL=$((FAIL + 1))
             fi
           done
 
