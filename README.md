@@ -21,15 +21,15 @@ sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub 
 
 所有文件位于 `Filters/` 目录：
 
-| 文件 | 说明 |
-|------|------|
-| `combined.srs` | **合并去重版（推荐）** — 所有源合并去重，约 27 万条规则 |
-| `AWAvenue-Ads-Rule-Singbox.srs` | 单源：AWAvenue |
-| `GOODBYEADS-dns.srs` | 单源：GOODBYEADS |
-| `adb.srs` | 单源：10007 |
-| `qq5460168-666-Singbox.srs` | 单源：666 |
-| `217heidai-adblockdns.srs` | 单源：217heidai |
-| `anti-ad.srs` | 单源：anti-AD |
+| 文件 | 说明 | 下载链接 |
+|------|------|----------|
+| `combined.srs` | **合并去重版（推荐）** | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/combined.srs) |
+| `AWAvenue-Ads-Rule-Singbox.srs` | 单源：AWAvenue | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/AWAvenue-Ads-Rule-Singbox.srs) |
+| `GOODBYEADS-dns.srs` | 单源：GOODBYEADS | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/GOODBYEADS-dns.srs) |
+| `adb.srs` | 单源：10007 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/adb.srs) |
+| `qq5460168-666-Singbox.srs` | 单源：666 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/qq5460168-666-Singbox.srs) |
+| `217heidai-adblockdns.srs` | 单源：217heidai | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/217heidai-adblockdns.srs) |
+| `anti-ad.srs` | 单源：anti-AD | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/anti-ad.srs) |
 
 单源文件保留供需要精细控制的用户。
 
