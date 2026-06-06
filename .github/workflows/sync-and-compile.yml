@@ -5,9 +5,6 @@ on:
     - cron: '0 2 * * *' # Daily at UTC 02:00 (Beijing 10:00)
   workflow_dispatch:
 
-env:
-  SINGBOX_VERSION: "" # Resolved dynamically at runtime
-
 jobs:
   sync-and-compile:
     runs-on: ubuntu-latest
@@ -60,7 +57,11 @@ jobs:
             -o Filters/adb.txt
 
           echo "✅ All downloads complete"
-          ls -lh Filters/
+
+      - name: Merge and Deduplicate Rules
+        run: |
+          set -euo pipefail
+          python3 scripts/merge-rules.py
 
       - name: Compile Filters
         run: |

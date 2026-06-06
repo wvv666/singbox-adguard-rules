@@ -1,3 +1,4 @@
 *.tar.gz
 sing-box
 .DS_Store
+Filters/combined.json
