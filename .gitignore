@@ -2,3 +2,4 @@
 sing-box
 .DS_Store
 Filters/combined.json
+__pycache__/
