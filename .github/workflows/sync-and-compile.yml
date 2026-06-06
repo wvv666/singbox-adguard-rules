@@ -66,6 +66,11 @@ jobs:
             "https://raw.githubusercontent.com/qq5460168/666/master/allow.txt" \
             -o Filters/qq5460168-666-allow.txt
 
+          echo "📥 Downloading 217heidai adblockdns..."
+          curl -fSL --retry 3 --retry-delay 5 \
+            "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt" \
+            -o Filters/217heidai-adblockdns.txt
+
           echo "✅ All downloads complete"
 
       - name: Merge and Deduplicate Rules
