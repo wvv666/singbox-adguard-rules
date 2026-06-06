@@ -56,7 +56,7 @@ def parse_adguard_txt(filepath: Path) -> tuple[set[str], set[str]]:
 def parse_hosts(filepath: Path) -> set[str]:
     """Extract blocked domains from hosts file format.
     
-    Handles: 0.0.0.0 domain, 127.0.0.1 domain, :: domain
+    Handles: 0.0.0.0 domain (sing-box only accepts 0.0.0.0)
     Also handles comments (# or !) and inline comments.
     """
     domains = set()
@@ -77,7 +77,8 @@ def parse_hosts(filepath: Path) -> set[str]:
                 continue
             
             ip = parts[0]
-            if ip not in ('0.0.0.0', '127.0.0.1', '::', '::1'):
+            # sing-box only accepts 0.0.0.0 for hosts format
+            if ip != '0.0.0.0':
                 continue
             
             for domain in parts[1:]:
