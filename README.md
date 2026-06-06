@@ -19,11 +19,14 @@ sing-box 广告规则自动同步与编译。每日通过 GitHub Actions 从多�
 
 所有文件位于 `Filters/` 目录：
 
-| 文件 | 格式 | 用途 |
+| 文件 | 格式 | 说明 |
 |------|------|------|
-| `AWAvenue-Ads-Rule-Singbox.srs` | sing-box rule-set | IP/域名拦截 |
-| `GOODBYEADS-dns.srs` | sing-box rule-set | DNS 广告拦截 |
-| `adb.srs` | sing-box rule-set | DNS 广告拦截 |
+| `combined.srs` | sing-box rule-set | **合并去重版**（推荐） |
+| `AWAvenue-Ads-Rule-Singbox.srs` | sing-box rule-set | 单源：AWAvenue |
+| `GOODBYEADS-dns.srs` | sing-box rule-set | 单源：GOODBYEADS |
+| `adb.srs` | sing-box rule-set | 单源：10007 |
+
+`combined.srs` 合并三个源并去重，排除白名单例外。单源文件保留供精细控制。
 
 ## 使用方法
 
@@ -43,7 +46,7 @@ sing-box 广告规则自动同步与编译。每日通过 GitHub Actions 从多�
         "tag": "geosite-category-ads-all",
         "type": "remote",
         "format": "binary",
-        "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/AWAvenue-Ads-Rule-Singbox.srs",
+        "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/combined.srs",
         "download_detour": "direct"
       }
     ]
