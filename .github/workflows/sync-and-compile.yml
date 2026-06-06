@@ -5,6 +5,9 @@ on:
     - cron: '0 2 * * *' # Daily at UTC 02:00 (Beijing 10:00)
   workflow_dispatch:
 
+env:
+  SINGBOX_VERSION: "" # Resolved dynamically at runtime
+
 jobs:
   sync-and-compile:
     runs-on: ubuntu-latest
@@ -15,47 +18,104 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download Rule Files
-        run: |
-          mkdir -p Filters
-
-          # AWAvenue Ads Rule (sing-box format)
-          curl -sL https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/Filters/AWAvenue-Ads-Rule-Singbox.json -o Filters/AWAvenue-Ads-Rule-Singbox.json
-
-          # GOODBYEADS DNS rules
-          curl -sL https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt -o Filters/GOODBYEADS-dns.txt
-
-          # 10007 ADB rules
-          curl -sL https://lingeringsound.github.io/10007/adb.txt -o Filters/adb.txt
+      - name: Cache sing-box binary
+        id: cache-singbox
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/sing-box
+          key: singbox-${{ runner.os }}-${{ hashFiles('.github/workflows/sync-and-compile.yml') }}
 
       - name: Install sing-box
+        if: steps.cache-singbox.outputs.cache-hit != 'true'
         run: |
-          TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          set -euo pipefail
+          TAG=$(curl -sf https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
           VERSION=${TAG#v}
           URL="https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${VERSION}-linux-amd64.tar.gz"
-          curl -L "$URL" -o sing-box.tar.gz
+          echo "Installing sing-box ${VERSION}..."
+          curl -fSL "$URL" -o sing-box.tar.gz
           tar -xzf sing-box.tar.gz
           sudo mv sing-box-*/sing-box /usr/local/bin/
+          rm -rf sing-box.tar.gz sing-box-*
           sing-box version
+
+      - name: Download Rule Files
+        run: |
+          set -euo pipefail
+          mkdir -p Filters
+
+          echo "📥 Downloading AWAvenue Ads Rule..."
+          curl -fSL --retry 3 --retry-delay 5 \
+            "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/Filters/AWAvenue-Ads-Rule-Singbox.json" \
+            -o Filters/AWAvenue-Ads-Rule-Singbox.json
+
+          echo "📥 Downloading GOODBYEADS DNS rules..."
+          curl -fSL --retry 3 --retry-delay 5 \
+            "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt" \
+            -o Filters/GOODBYEADS-dns.txt
+
+          echo "📥 Downloading 10007 ADB rules..."
+          curl -fSL --retry 3 --retry-delay 5 \
+            "https://lingeringsound.github.io/10007/adb.txt" \
+            -o Filters/adb.txt
+
+          echo "✅ All downloads complete"
+          ls -lh Filters/
 
       - name: Compile Filters
         run: |
+          set -euo pipefail
           cd Filters
           shopt -s nullglob
+          SUCCESS=0
+          FAIL=0
 
           # Compile JSON files (sing-box rule-set format)
           for file in *.json; do
             filename="${file%.json}"
-            echo "Compiling JSON: $file..."
-            sing-box rule-set compile --output "${filename}.srs" "$file"
+            echo "⚙️  Compiling JSON: $file..."
+            if sing-box rule-set compile --output "${filename}.srs" "$file"; then
+              echo "  ✅ ${filename}.srs ($(du -h "${filename}.srs" | cut -f1))"
+              ((SUCCESS++))
+            else
+              echo "  ❌ Failed to compile $file"
+              ((FAIL++))
+            fi
           done
 
           # Convert TXT files (AdGuard format)
           for file in *.txt; do
             filename="${file%.txt}"
-            echo "Converting TXT: $file..."
-            sing-box rule-set convert --type adguard --output "${filename}.srs" "$file"
+            echo "⚙️  Converting TXT: $file..."
+            if sing-box rule-set convert --type adguard --output "${filename}.srs" "$file"; then
+              echo "  ✅ ${filename}.srs ($(du -h "${filename}.srs" | cut -f1))"
+              ((SUCCESS++))
+            else
+              echo "  ❌ Failed to convert $file"
+              ((FAIL++))
+            fi
           done
+
+          echo ""
+          echo "📊 Results: ${SUCCESS} succeeded, ${FAIL} failed"
+          if [ "$FAIL" -gt 0 ]; then
+            echo "::error::${FAIL} filter(s) failed to compile"
+            exit 1
+          fi
+
+      - name: Summary
+        run: |
+          echo "## 📋 Filter Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          for f in Filters/*.srs; do
+            name=$(basename "$f")
+            size=$(du -h "$f" | cut -f1)
+            echo "| \`${name}\` | ${size} |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🕐 Updated: $(date +'%Y-%m-%d %H:%M UTC+8')" >> $GITHUB_STEP_SUMMARY
 
       - name: Commit and Push
         run: |
@@ -67,6 +127,6 @@ jobs:
           if git diff --quiet && git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "Auto update ad rules - $(date +'%Y-%m-%d')"
+            git commit -m "chore: update ad rules - $(date +'%Y-%m-%d')"
             git push
           fi
