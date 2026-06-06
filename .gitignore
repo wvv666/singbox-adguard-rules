@@ -1,5 +1,8 @@
 *.tar.gz
 sing-box
 .DS_Store
-Filters/combined.json
 __pycache__/
+
+# Source files (downloaded by CI, not tracked)
+Filters/*.json
+Filters/*.txt

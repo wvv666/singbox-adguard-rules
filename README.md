@@ -82,12 +82,14 @@ sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub 
 ```
 ├── .github/workflows/
 │   └── sync-and-compile.yml    # CI 工作流
-├── Filters/                    # 规则文件（源 + 编译产物）
+├── Filters/                    # 编译产物（.srs 文件）
 ├── scripts/
 │   └── merge-rules.py          # 去重合并脚本
 ├── LICENSE
 └── README.md
 ```
+
+源文件由 CI 每次运行时从上游下载，不保留在仓库中。
 
 ## 许可证
 
