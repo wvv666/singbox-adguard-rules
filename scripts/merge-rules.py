@@ -143,7 +143,6 @@ def main():
         ("GOODBYEADS-dns.txt",             "GOODBYEADS", False),
         ("adb.txt",                        "10007",      False),
         ("qq5460168-666-Singbox.json",     "666",        False),
-        ("qq5460168-666-allow.txt",        "666-allow",  True),
         ("217heidai-adblockdns.txt",         "217heidai",  False),
         ("anti-ad.txt",                       "anti-AD",    False),
         # Add more sources below, e.g.:
