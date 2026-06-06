@@ -71,6 +71,11 @@ jobs:
             "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt" \
             -o Filters/217heidai-adblockdns.txt
 
+          echo "📥 Downloading anti-AD..."
+          curl -fSL --retry 3 --retry-delay 5 \
+            "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-easylist.txt" \
+            -o Filters/anti-ad.txt
+
           echo "✅ All downloads complete"
 
       - name: Merge and Deduplicate Rules
