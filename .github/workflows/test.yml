@@ -1,0 +1,28 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v

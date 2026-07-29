@@ -4,7 +4,7 @@
 [![Last Update](https://img.shields.io/github/last-commit/wvv666/singbox-adguard-rules?label=updated)](../../actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub Actions 从多个可信源拉取规则，去重后编译为 `.srs` 二进制格式。
+sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub Actions 从多个公开上游拉取规则，去重后使用 sing-box 官方转换器编译为 `.srs` 二进制格式。
 
 ## 规则来源
 
@@ -64,15 +64,19 @@ sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub 
 ## 工作流程
 
 ```
-上游源 (JSON/TXT) → 下载 → 去重合并 → combined.json → sing-box 编译 → combined.srs
-                                                    ↘ 单源编译 → 各 .srs 文件
+上游源 (JSON/TXT) → 下载 → 等价转换与精确去重 → combined.txt → sing-box 官方转换 → combined.srs
+                                                               ↘ 单源编译/转换 → 各 .srs 文件
 ```
 
-1. 从 6 个上游源下载最新规则
-2. 自动检测格式（sing-box JSON / AdGuard TXT）
-3. 跨源去重，合并为 `combined.json`
-4. 使用 `sing-box rule-set compile` 编译为 `.srs` 二进制格式
+1. 从 7 个上游源下载最新规则
+2. 将 sing-box JSON 中可等价表示的域名、域名后缀、关键词和正则转换为 AdGuard 语法
+3. 原样保留 TXT 中的例外、通配符、正则、hosts、逐行域名和 `$important` 等规则并精确去重
+4. 使用官方 `sing-box rule-set convert --type adguard` 转换合并规则，单源 JSON 使用 `compile`
 5. 提交并推送变更
+
+AdGuard 转换行为和受支持语法以 [sing-box 官方兼容性文档](https://sing-box.sagernet.org/zh/configuration/rule-set/adguard/) 为准。JSON 的结构和字段语义遵循官方的[源文件格式](https://sing-box.sagernet.org/zh/configuration/rule-set/source-format/)与[无头规则](https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/)文档。
+
+不受官方转换器支持的路径规则和描述符会被跳过。无法等价表示为扁平 AdGuard DNS 规则的 JSON 内容，例如 `ip_cidr`、带端口或进程条件的 AND 规则、逻辑规则和 `invert`，会让合并任务明确失败，而不会被静默丢弃或扩大匹配范围。
 
 ## 自动更新
 
@@ -92,6 +96,21 @@ sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub 
 ```
 
 源文件由 CI 每次运行时从上游下载，不保留在仓库中。
+
+## 本地验证
+
+合并脚本仅依赖 Python 3.10+ 标准库。运行测试：
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+如需使用已下载到 `Filters/` 的上游文件生成并转换合并规则：
+
+```bash
+python3 scripts/merge-rules.py
+sing-box rule-set convert --type adguard --output Filters/combined.srs Filters/combined.txt
+```
 
 ## 许可证
 

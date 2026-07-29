@@ -4,10 +4,20 @@ on:
   schedule:
     - cron: '0 2 * * *' # Daily at UTC 02:00 (Beijing 10:00)
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/merge-rules.py'
+      - '.github/workflows/sync-and-compile.yml'
+
+concurrency:
+  group: sync-and-compile
+  cancel-in-progress: false
 
 jobs:
   sync-and-compile:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
 
@@ -15,26 +25,47 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Test merge script
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Resolve sing-box version
+        id: singbox
+        run: |
+          set -euo pipefail
+          tag=$(curl -fsSL --retry 3 --retry-all-errors \
+            https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "::error::Unexpected sing-box release tag: $tag"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
       - name: Cache sing-box binary
         id: cache-singbox
         uses: actions/cache@v4
         with:
-          path: /usr/local/bin/sing-box
-          key: singbox-${{ runner.os }}-${{ hashFiles('.github/workflows/sync-and-compile.yml') }}
+          path: ~/.local/bin/sing-box
+          key: singbox-${{ runner.os }}-${{ runner.arch }}-${{ steps.singbox.outputs.version }}
 
       - name: Install sing-box
         if: steps.cache-singbox.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
-          TAG=$(curl -sf https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
-          VERSION=${TAG#v}
-          URL="https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${VERSION}-linux-amd64.tar.gz"
-          echo "Installing sing-box ${VERSION}..."
-          curl -fSL "$URL" -o sing-box.tar.gz
+          tag="${{ steps.singbox.outputs.tag }}"
+          version="${{ steps.singbox.outputs.version }}"
+          url="https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-linux-amd64.tar.gz"
+          echo "Installing sing-box ${version}..."
+          curl -fSL --retry 3 --retry-all-errors "$url" -o sing-box.tar.gz
           tar -xzf sing-box.tar.gz
-          sudo mv sing-box-*/sing-box /usr/local/bin/
+          mkdir -p "$HOME/.local/bin"
+          mv sing-box-*/sing-box "$HOME/.local/bin/"
           rm -rf sing-box.tar.gz sing-box-*
-          sing-box version
+
+      - name: Add sing-box to PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/sing-box" version
 
       - name: Download Rule Files
         run: |
@@ -42,37 +73,37 @@ jobs:
           mkdir -p Filters
 
           echo "📥 Downloading AWAvenue Ads Rule..."
-          curl -fSL --retry 3 --retry-delay 5 \
+          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
             "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/Filters/AWAvenue-Ads-Rule-Singbox.json" \
             -o Filters/AWAvenue-Ads-Rule-Singbox.json
 
           echo "📥 Downloading GOODBYEADS DNS rules..."
-          curl -fSL --retry 3 --retry-delay 5 \
+          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
             "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt" \
             -o Filters/GOODBYEADS-dns.txt
 
           echo "📥 Downloading 10007 ADB rules..."
-          curl -fSL --retry 3 --retry-delay 5 \
+          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
             "https://lingeringsound.github.io/10007/adb.txt" \
             -o Filters/adb.txt
 
           echo "📥 Downloading 666 Singbox rules..."
-          curl -fSL --retry 3 --retry-delay 5 \
+          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
             "https://raw.githubusercontent.com/qq5460168/666/master/Singbox.json" \
             -o Filters/qq5460168-666-Singbox.json
 
           echo "📥 Downloading 217heidai adblockdns..."
-          curl -fSL --retry 3 --retry-delay 5 \
+          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
             "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt" \
             -o Filters/217heidai-adblockdns.txt
 
           echo "📥 Downloading anti-AD..."
-          curl -fSL --retry 3 --retry-delay 5 \
+          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
             "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-easylist.txt" \
             -o Filters/anti-ad.txt
 
           echo "📥 Downloading REIJI007..."
-          curl -fSL --retry 3 --retry-delay 5 \
+          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
             "https://raw.githubusercontent.com/REIJI007/AdBlock_Rule_For_Sing-box/main/adblock_reject.json" \
             -o Filters/REIJI007-adblock_reject.json
 
@@ -104,7 +135,7 @@ jobs:
             fi
           done
 
-          # Convert TXT files (AdGuard format)
+          # Convert TXT files with sing-box's official AdGuard converter.
           for file in *.txt; do
             filename="${file%.txt}"
             echo "⚙️  Converting TXT: $file..."
@@ -136,7 +167,7 @@ jobs:
             echo "| \`${name}\` | ${size} |" >> $GITHUB_STEP_SUMMARY
           done
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🕐 Updated: $(date +'%Y-%m-%d %H:%M UTC+8')" >> $GITHUB_STEP_SUMMARY
+          echo "🕐 Updated: $(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M UTC+8')" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit and Push
         run: |
