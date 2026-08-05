@@ -33,7 +33,7 @@
 | `adguard` | `merged/adguard/adguard.srs` | 仅 AdGuard 语法 |
 | `hosts` | `merged/hosts/hosts.srs` | 仅 hosts 语法 |
 
-URL 前缀统一为 `https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/`。单源规则集在 `converted/adguard/<源名>.srs`（源名见 `sources.json`）。
+URL 前缀统一为 `https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/`。单源规则集在 `converted/<type>/<源名>.srs`（type 为 `adguard` 或 `hosts`，源名见 `sources.json`）。
 
 ## 自动更新
 
