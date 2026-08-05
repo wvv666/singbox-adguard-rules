@@ -48,8 +48,6 @@
 
 ## 📥 规则订阅
 
-所有文件均为 sing-box 规则集（`.srs`），可直接填入 `route.rule_set[].url`。
-
 <details open>
 <summary><b>🚫 合并规则集（推荐）</b></summary>
 <br>
