@@ -13234,7 +13234,7 @@
                     "zz.bdstatic.com"
                   ],
                   "domain_regex": [
-                    "(^|\\.)wxsnsdy\\.wxs\\.qq\\.com(\\.|$)",
+                    "^(.+\\.)?wxsnsdy\\.wxs\\.qq\\.com",
                     "api/ad/adserver"
                   ]
                 }

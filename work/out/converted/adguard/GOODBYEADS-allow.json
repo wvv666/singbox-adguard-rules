@@ -18,12 +18,12 @@
             {
               "invert": true,
               "domain_regex": [
-                "(^|\\.)acs\\.m\\.taobao\\.com(\\.|$)",
                 "(^|\\.)cdn.*\\.porn300\\.com$",
-                "(^|\\.)krebsonsecurity\\.com(\\.|$)",
-                "(^|\\.)s\\-plugins\\.wordpress\\.org(\\.|$)",
-                "(^|\\.)smartpixel\\.tv(\\.|$)",
-                ":\\/\\/.*[.]wp[.]pl\\/[a-z0-9_]+[.][a-z]+[/:&?]?"
+                ":\\/\\/.*[.]wp[.]pl\\/[a-z0-9_]+[.][a-z]+[/:&?]?",
+                "^(.+\\.)?acs\\.m\\.taobao\\.com",
+                "^(.+\\.)?krebsonsecurity\\.com",
+                "^(.+\\.)?s\\-plugins\\.wordpress\\.org",
+                "^(.+\\.)?smartpixel\\.tv"
               ],
               "domain": [
                 "www.twitch.tv"

@@ -35,16 +35,16 @@
                 {
                   "invert": true,
                   "domain_regex": [
-                    "(^|\\.)acs\\.m\\.taobao\\.com(\\.|$)",
                     "(^|\\.)cdn.*\\.porn300\\.com$",
-                    "(^|\\.)krebsonsecurity\\.com(\\.|$)",
                     "(^|\\.)p.*\\-ppx\\.byteimg\\.com$",
                     "(^|\\.)profile.*\\.se\\.360\\.cn$",
                     "(^|\\.)register.*mi\\.com$",
                     "(^|\\.)resolver.*mi\\.com$",
-                    "(^|\\.)s\\-plugins\\.wordpress\\.org(\\.|$)",
-                    "(^|\\.)smartpixel\\.tv(\\.|$)",
-                    ":\\/\\/.*[.]wp[.]pl\\/[a-z0-9_]+[.][a-z]+[/:&?]?"
+                    ":\\/\\/.*[.]wp[.]pl\\/[a-z0-9_]+[.][a-z]+[/:&?]?",
+                    "^(.+\\.)?acs\\.m\\.taobao\\.com",
+                    "^(.+\\.)?krebsonsecurity\\.com",
+                    "^(.+\\.)?s\\-plugins\\.wordpress\\.org",
+                    "^(.+\\.)?smartpixel\\.tv"
                   ],
                   "domain_suffix": [
                     "5471782.fls.doubleclick.net",
@@ -241155,7 +241155,6 @@
                         "(^|\\.)vs.*\\.gzcu\\.u3\\.ucweb\\.com$",
                         "(^|\\.)web\\-stat\\..*$",
                         "(^|\\.)webads\\..*$",
-                        "(^|\\.)wxsnsdy\\.wxs\\.qq\\.com(\\.|$)",
                         "(^|\\.)xdyn0.*jy\\.com$",
                         "(^|\\.)xn\\-\\-wxtr9fwyxk9c\\..*$",
                         "(^|\\.)xn\\-\\-xhq9mt12cf5v\\..*$",
@@ -241164,6 +241163,7 @@
                         "(^|\\.)ysdm.*\\.ys137\\.com\\.cn$",
                         "(^|\\.)zbb\\.bbb\\..*\\.pics$",
                         "(^|\\.)zhizhizhizhi\\.oss\\-.*\\.aliyuncs\\.com$",
+                        "^(.+\\.)?wxsnsdy\\.wxs\\.qq\\.com",
                         "^.+\\.diwodiwo\\.xyz$",
                         "^.+\\.exaapi\\.com$",
                         "^.+\\.mmstat\\.com$",
