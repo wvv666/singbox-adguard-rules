@@ -107,9 +107,12 @@ python3 -m unittest discover -s tests -v
 
 ```bash
 python3 scripts/download-sources.py --sources sources.json --out work/sources
-python3 scripts/adguard2headless.py \
-  --adguard work/sources/adguard/*.txt \
-  --hosts  work/sources/hosts/*.hosts \
+
+# 转换器 --adguard/--hosts 需逐文件传入（与 CI 相同）
+ARGS=()
+for f in work/sources/adguard/*.txt; do ARGS+=(--adguard "$f"); done
+for f in work/sources/hosts/*.hosts; do ARGS+=(--hosts "$f"); done
+python3 scripts/adguard2headless.py "${ARGS[@]}" \
   --base-url https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out \
   -o work/out
 # 编译 .srs 需 sing-box 二进制（CI 自动完成）
