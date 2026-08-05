@@ -140,6 +140,9 @@ jobs:
           echo "merged files:"
           ls -la work/out/merged/*/
 
+      - name: Refresh README stats
+        run: python3 scripts/update-readme-stats.py --readme README.md --out work/out
+
       - name: Summary
         run: |
           echo "## 📋 Rule-set Summary" >> $GITHUB_STEP_SUMMARY
@@ -159,7 +162,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          git add work/out/ sources.json scripts/ tests/ .github/
+          git add work/out/ README.md sources.json scripts/ tests/ .github/
 
           if git diff --quiet && git diff --staged --quiet; then
             echo "No changes to commit."
