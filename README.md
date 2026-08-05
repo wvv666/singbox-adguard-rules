@@ -22,7 +22,7 @@
   <a href="#-项目统计">项目统计</a> •
   <a href="#-规则订阅">规则订阅</a> •
   <a href="#-上游列表">上游列表</a> •
-  <a href="#-使用方法">使用方法</a>
+  <a href="#-完善项目">完善项目</a>
 </p>
 
 ---
@@ -91,31 +91,6 @@
 - [lingeringsound/10007](https://github.com/lingeringsound/10007) — ADB 拦截 + hosts 全量
 
 </details>
-
-## 🚀 使用方法
-
-把订阅表中的链接填入 sing-box 配置（`type: "remote"`, `format: "binary"`），并在 `route.rules` 中引用：
-
-```jsonc
-{
-  "route": {
-    "rule_set": [
-      {
-        "tag": "combined",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/combined/combined.srs",
-        "download_detour": "direct"
-      }
-    ],
-    "rules": [
-      { "rule_set": ["combined"], "outbound": "block" }
-    ]
-  }
-}
-```
-
-完整配置参考 [sing-box 官方文档](https://sing-box.sagernet.org/configuration/rule-set/)。
 
 ## 💬 完善项目
 
