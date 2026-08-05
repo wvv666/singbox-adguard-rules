@@ -167,5 +167,7 @@ jobs:
             echo "No changes to commit."
           else
             git commit -m "chore: update ad rules - $(date +'%Y-%m-%d')"
+            # 定时与 push 触发可能重叠：push 前先 rebase 远端，避免 non-fast-forward
+            git pull --rebase origin main
             git push
           fi

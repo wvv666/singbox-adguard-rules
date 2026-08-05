@@ -45,11 +45,35 @@ class TestPollutionDetection(unittest.TestCase):
             ds._check_url("http://example.com/x.txt")
         with self.assertRaises(ValueError):
             ds._check_url("https://evil.com/x.txt")
+        # github.com 网页会触发污染检测且禁重定向，属死配置，不列入白名单
+        with self.assertRaises(ValueError):
+            ds._check_url("https://github.com/user/repo/blob/main/a.txt")
 
     def test_html_in_body_not_detected(self):
         # 只扫描头部 8KB：HTML 出现在 8KB 之后不判污染（规则正文里的标签不是拦截页）
         body = "! 规则正文\n" + "x" * 9000 + "\n<!DOCTYPE html><html>"
         self.assertFalse(ds.is_polluted(body))
+
+
+class TestDestConflict(unittest.TestCase):
+    """同 basename 源名 → 解析到同一目标应报错。"""
+
+    def test_same_basename_conflict(self):
+        import contextlib
+        import io
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            manifest = [
+                {"name": "a/adblock", "url": "https://raw.githubusercontent.com/x/y/a.txt", "type": "adguard"},
+                {"name": "c/adblock", "url": "https://raw.githubusercontent.com/x/y/b.txt", "type": "adguard"},
+            ]
+            mf = Path(td) / "sources.json"
+            mf.write_text(json.dumps(manifest), encoding="utf-8")
+            err = io.StringIO()
+            with self.assertRaises(SystemExit), contextlib.redirect_stderr(err):
+                ds.main(["--sources", str(mf), "--out", str(Path(td) / "out")])
+            self.assertIn("同一目标", err.getvalue())
 
 
 if __name__ == "__main__":

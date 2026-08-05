@@ -106,11 +106,15 @@ example.arpa
         "isexample.net", "www.example.net", "example.edu", "example.edu.cn",
         "example.edu.tw", "www.example.edu", "www.example.edu.cn", "example.gov",
         "example.arpa", "sagernet.org", "www.sagernet.org",
+        # ||example.edu（无 ^）：x 后不限（AdGuard 宽松后缀语义）
+        "example.education", "example.edu.evil.com",
     ]
     NOT_MATCH = [
         "example.org.cn", "notexample.org", "example.com.cn", "www.example.com.cn",
         "example.net.cn", "notexample.edu", "notexample.edu.cn", "www.example.gov",
         "notexample.gov", "sagernet.example.org", "sing-box.sagernet.org",
+        # 放宽不越界：x 必须是完整标签边界
+        "notexample.education", "badexample.edu.evil.com",
     ]
 
     def test_converter_semantics(self):

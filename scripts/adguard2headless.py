@@ -277,8 +277,11 @@ def _to_regex(parsed: Parsed) -> str:
         # x^ → 域名以 x 结尾（子串语义，官方测试 isexample.net 也匹配）
         return rf"{_regex_escape_domain(core)}$"
     if parsed.suffix_loose:
-        # ||x（无 ^）→ 域名以 x 开头/为 x 的子域，x 后不限（官方测试 example.edu.cn 匹配）
-        return rf"(^|\.){_regex_escape_domain(core)}(\.|$)"
+        # ||x（无 ^）：AdGuard 语义是"域名以 x 开头或 x 是其完整标签后缀"，x 后
+        # 不限。官方测试 ||example.edu 匹配 example.edu.cn；同时放宽到
+        # example.education（x 后任意字符，AdGuard 无 ^ 时不限域名结束）。
+        # 前缀 (.+\.) 保证 x 是完整标签边界：不匹配 notexample.edu。
+        return rf"^(.+\.)?{_regex_escape_domain(core)}"
     if parsed.is_suffix and core.startswith("*."):
         # ||*.x^ 仅子域：x 的子域（不含 x 本身）
         return rf"^.+\.{_regex_escape_domain(core[2:])}$"
