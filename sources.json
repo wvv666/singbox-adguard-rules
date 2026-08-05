@@ -1,0 +1,37 @@
+[
+  {
+    "name": "217heidai-adblockdns",
+    "url": "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt",
+    "type": "adguard"
+  },
+  {
+    "name": "GOODBYEADS-dns",
+    "url": "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt",
+    "type": "adguard"
+  },
+  {
+    "name": "anti-ad-adguard",
+    "url": "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-adguard.txt",
+    "type": "adguard"
+  },
+  {
+    "name": "qq5460168-dns",
+    "url": "https://raw.githubusercontent.com/qq5460168/666/master/dns.txt",
+    "type": "adguard"
+  },
+  {
+    "name": "10007-adb",
+    "url": "https://raw.githubusercontent.com/lingeringsound/10007/main/adb.txt",
+    "type": "adguard"
+  },
+  {
+    "name": "GOODBYEADS-allow",
+    "url": "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/allow.txt",
+    "type": "adguard"
+  },
+  {
+    "name": "10007-all",
+    "url": "https://raw.githubusercontent.com/lingeringsound/10007/main/all",
+    "type": "hosts"
+  }
+]

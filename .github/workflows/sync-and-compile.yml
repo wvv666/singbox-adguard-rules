@@ -7,8 +7,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/merge-rules.py'
-      - '.github/workflows/sync-and-compile.yml'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'sources.json'
+      - '.github/workflows/**'
 
 concurrency:
   group: sync-and-compile
@@ -17,7 +19,7 @@ concurrency:
 jobs:
   sync-and-compile:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: write
 
@@ -25,10 +27,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Test merge script
+      - name: Run unit tests
         run: python3 -m unittest discover -s tests -v
 
-      - name: Resolve sing-box version
+      - name: Resolve sing-box latest version
         id: singbox
         run: |
           set -euo pipefail
@@ -41,128 +43,113 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Cache sing-box binary
+      - name: Cache sing-box binary (keyed by version)
         id: cache-singbox
         uses: actions/cache@v4
         with:
           path: ~/.local/bin/sing-box
           key: singbox-${{ runner.os }}-${{ runner.arch }}-${{ steps.singbox.outputs.version }}
 
-      - name: Install sing-box
+      - name: Install sing-box (latest)
         if: steps.cache-singbox.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           tag="${{ steps.singbox.outputs.tag }}"
           version="${{ steps.singbox.outputs.version }}"
-          url="https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-linux-amd64.tar.gz"
-          echo "Installing sing-box ${version}..."
+          case "${{ runner.arch }}" in
+            X64)  arch="amd64" ;;
+            ARM64) arch="arm64" ;;
+            *)    echo "::error::Unsupported runner arch: ${{ runner.arch }}"; exit 1 ;;
+          esac
+          url="https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-linux-${arch}.tar.gz"
+          echo "Installing sing-box ${version} (${arch})..."
           curl -fSL --retry 3 --retry-all-errors "$url" -o sing-box.tar.gz
+          # 校验 SHA-256（防 release 资产被替换；兼容 "hash  filename" 与 "filename: hash" 两种格式）
+          curl -fSL --retry 3 --retry-all-errors "${url}.sha256sum" -o sing-box.tar.gz.sha256sum
+          expected=$(grep -oE '[0-9a-fA-F]{64}' sing-box.tar.gz.sha256sum | head -1 | tr 'A-F' 'a-f')
+          actual=$(sha256sum sing-box.tar.gz | awk '{print $1}')
+          echo "sha256 expected: ${expected}"
+          echo "sha256 actual:   ${actual}"
+          if [[ "$expected" != "$actual" ]]; then
+            echo "::error::sing-box 二进制 checksum 校验失败"
+            exit 1
+          fi
           tar -xzf sing-box.tar.gz
           mkdir -p "$HOME/.local/bin"
           mv sing-box-*/sing-box "$HOME/.local/bin/"
           rm -rf sing-box.tar.gz sing-box-*
 
-      - name: Add sing-box to PATH
+      - name: Verify sing-box version matches latest
         run: |
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          "$HOME/.local/bin/sing-box" version
-
-      - name: Download Rule Files
-        run: |
-          set -euo pipefail
-          mkdir -p Filters
-
-          echo "📥 Downloading AWAvenue Ads Rule..."
-          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
-            "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/Filters/AWAvenue-Ads-Rule-Singbox.json" \
-            -o Filters/AWAvenue-Ads-Rule-Singbox.json
-
-          echo "📥 Downloading GOODBYEADS DNS rules..."
-          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
-            "https://raw.githubusercontent.com/8680/GOODBYEADS/master/data/rules/dns.txt" \
-            -o Filters/GOODBYEADS-dns.txt
-
-          echo "📥 Downloading 10007 ADB rules..."
-          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
-            "https://lingeringsound.github.io/10007/adb.txt" \
-            -o Filters/adb.txt
-
-          echo "📥 Downloading 666 Singbox rules..."
-          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
-            "https://raw.githubusercontent.com/qq5460168/666/master/Singbox.json" \
-            -o Filters/qq5460168-666-Singbox.json
-
-          echo "📥 Downloading 217heidai adblockdns..."
-          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
-            "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt" \
-            -o Filters/217heidai-adblockdns.txt
-
-          echo "📥 Downloading anti-AD..."
-          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
-            "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-easylist.txt" \
-            -o Filters/anti-ad.txt
-
-          echo "📥 Downloading REIJI007..."
-          curl -fSL --retry 3 --retry-all-errors --retry-delay 5 \
-            "https://raw.githubusercontent.com/REIJI007/AdBlock_Rule_For_Sing-box/main/adblock_reject.json" \
-            -o Filters/REIJI007-adblock_reject.json
-
-          echo "✅ All downloads complete"
-
-      - name: Merge and Deduplicate Rules
-        run: |
-          set -euo pipefail
-          python3 scripts/merge-rules.py
-
-      - name: Compile Filters
-        run: |
-          set -euo pipefail
-          cd Filters
-          shopt -s nullglob
-          SUCCESS=0
-          FAIL=0
-
-          # Compile JSON files (sing-box rule-set format)
-          for file in *.json; do
-            filename="${file%.json}"
-            echo "⚙️  Compiling JSON: $file..."
-            if sing-box rule-set compile --output "${filename}.srs" "$file"; then
-              echo "  ✅ ${filename}.srs ($(du -h "${filename}.srs" | cut -f1))"
-              SUCCESS=$((SUCCESS + 1))
-            else
-              echo "  ❌ Failed to compile $file"
-              FAIL=$((FAIL + 1))
-            fi
-          done
-
-          # Convert TXT files with sing-box's official AdGuard converter.
-          for file in *.txt; do
-            filename="${file%.txt}"
-            echo "⚙️  Converting TXT: $file..."
-            if sing-box rule-set convert --type adguard --output "${filename}.srs" "$file"; then
-              echo "  ✅ ${filename}.srs ($(du -h "${filename}.srs" | cut -f1))"
-              SUCCESS=$((SUCCESS + 1))
-            else
-              echo "  ❌ Failed to convert $file"
-              FAIL=$((FAIL + 1))
-            fi
-          done
-
-          echo ""
-          echo "📊 Results: ${SUCCESS} succeeded, ${FAIL} failed"
-          if [ "$FAIL" -gt 0 ]; then
-            echo "::error::${FAIL} filter(s) failed to compile"
+          version=$("$HOME/.local/bin/sing-box" version | head -1)
+          echo "installed: $version"
+          echo "expected:  ${{ steps.singbox.outputs.version }}"
+          if ! "$HOME/.local/bin/sing-box" version | grep -q "${{ steps.singbox.outputs.version }}"; then
+            echo "::error::sing-box 版本与 latest 不符"
             exit 1
           fi
 
+      - name: Download rule sources (sources.json, with WAF pollution detection)
+        run: python3 scripts/download-sources.py --sources sources.json --out work/sources
+
+      - name: Convert & merge rules (adguard2headless)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          args=()
+          for f in work/sources/adguard/*.txt; do args+=(--adguard "$f"); done
+          for f in work/sources/hosts/*.hosts; do args+=(--hosts "$f"); done
+          python3 scripts/adguard2headless.py "${args[@]}" \
+            --base-url "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out" \
+            -o work/out
+
+      - name: Compile .srs (all converted + merged JSON)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          SUCCESS=0
+          FAIL=0
+          for f in work/out/converted/adguard/*.json \
+                   work/out/converted/hosts/*.json \
+                   work/out/merged/*/*.json; do
+            out="${f%.json}.srs"
+            echo "⚙️  Compiling $f -> $out"
+            if sing-box rule-set compile --output "$out" "$f"; then
+              echo "  ✅ ${out} ($(du -h "$out" | cut -f1))"
+              SUCCESS=$((SUCCESS + 1))
+            else
+              echo "  ❌ Failed: $f"
+              FAIL=$((FAIL + 1))
+            fi
+          done
+          echo ""
+          echo "📊 Results: ${SUCCESS} succeeded, ${FAIL} failed"
+          if [ "$FAIL" -gt 0 ]; then
+            echo "::error::${FAIL} rule-set(s) failed to compile"
+            exit 1
+          fi
+
+      - name: Verify products non-empty
+        run: |
+          set -euo pipefail
+          combined="work/out/merged/combined/combined.json"
+          if [ ! -s "$combined" ]; then
+            echo "::error::合并产物为空（可能上游规则退化），拒绝提交"
+            exit 1
+          fi
+          echo "combined.json: $(stat -c %s "$combined") bytes"
+          echo "merged files:"
+          ls -la work/out/merged/*/
+
       - name: Summary
         run: |
-          echo "## 📋 Filter Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Rule-set Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rule-set | Size |" >> $GITHUB_STEP_SUMMARY
           echo "|------|------|" >> $GITHUB_STEP_SUMMARY
-          for f in Filters/*.srs; do
-            name=$(basename "$f")
+          for f in work/out/merged/*/*.srs work/out/converted/*/*.srs; do
+            name=${f#work/out/}
             size=$(du -h "$f" | cut -f1)
             echo "| \`${name}\` | ${size} |" >> $GITHUB_STEP_SUMMARY
           done
@@ -174,7 +161,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          git add Filters/
+          git add work/out/ sources.json scripts/ tests/ .github/
 
           if git diff --quiet && git diff --staged --quiet; then
             echo "No changes to commit."
