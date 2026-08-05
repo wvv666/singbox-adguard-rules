@@ -89,8 +89,7 @@ sources.json (源清单) → download-sources.py (下载 + WAF 污染检测)
 ├── sources.json                # 源清单（URL + 类型）
 ├── scripts/
 │   ├── download-sources.py     # 按清单下载 + WAF 污染检测
-│   ├── adguard2headless.py     # AdGuard/hosts → 无头规则 JSON 转换器
-│   └── merge-rules.py          # （旧）去重合并脚本
+│   └── adguard2headless.py     # AdGuard/hosts → 无头规则 JSON 转换器
 ├── tests/                      # 单元测试
 ├── work/out/                   # CI 产物（sources/converted/merged/rule-sets）
 └── README.md
