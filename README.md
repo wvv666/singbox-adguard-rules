@@ -37,14 +37,14 @@
 📈 合并规则集（去重后）:
    combined 258,311 条  （AdGuard + hosts 全量）
    adguard  241,130 条  （仅 AdGuard 语法）
-   hosts     17,181 条  （仅 hosts 格式）
+   hosts    17,181 条  （仅 hosts 格式）
 
 📦 单源规则集:
    217heidai  201,338 条   GOODBYEADS-dns  115,498 条
    anti-ad    102,187 条   qq5460168       15,188 条
-   10007-adb   13,201 条   10007-all       17,181 条
-   GOODBYEADS-allow      92 条（白名单例外）
-```
+   10007-adb  13,201 条   10007-all       17,181 条
+   GOODBYEADS-allow    92 条（白名单例外）
+
 
 ## 📥 规则订阅
 
