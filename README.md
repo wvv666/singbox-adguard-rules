@@ -35,8 +35,8 @@
 🗓️ 每日更新（北京时间 10:00 自动同步并重新编译）
 
 📈 合并规则集（去重后）:
-   combined 258,312 条  （AdGuard + hosts 全量）
-   adguard  241,131 条  （仅 AdGuard 语法）
+   combined 258,311 条  （AdGuard + hosts 全量）
+   adguard  241,130 条  （仅 AdGuard 语法）
    hosts     17,181 条  （仅 hosts 格式）
 
 📦 单源规则集:
