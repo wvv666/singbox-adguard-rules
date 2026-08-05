@@ -37,10 +37,11 @@ def is_polluted(text: str) -> bool:
 
 MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024  # 64MB 响应大小上限
 
-# 允许的源主机白名单（防 file:// 等非 https 或任意主机拉取）
+# 允许的源主机白名单（防 file:// 等非 https 或任意主机拉取）。
+# 注意：禁重定向 + HTML 污染检测，仅 raw.githubusercontent.com 与
+# lingeringsound.github.io 这类纯文本直链可用（github.com 网页会触发污染检测）。
 ALLOWED_HOSTS = {
     "raw.githubusercontent.com",
-    "github.com",
     "lingeringsound.github.io",
 }
 
@@ -104,11 +105,11 @@ def download(url: str, dest: Path, timeout: int = 60, retries: int = 3) -> None:
     raise last_err if last_err else RuntimeError("unknown download error")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--sources", type=Path, default=Path("sources.json"))
     ap.add_argument("--out", type=Path, default=Path("work/sources"))
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     sources = json.loads(args.sources.read_text(encoding="utf-8"))
     if not isinstance(sources, list) or not sources:
@@ -125,8 +126,14 @@ def main() -> None:
         seen.add(name)
 
     failed = 0
+    dests: dict[Path, str] = {}
     for s in sources:
         dest = args.out / s["type"] / f"{Path(str(s['name'])).name}.{'hosts' if s['type'] == 'hosts' else 'txt'}"
+        prev = dests.setdefault(dest, s["name"])
+        if prev != s["name"]:
+            ap.error(
+                f"源名 {prev!r} 与 {s['name']!r} 解析到同一目标 {dest}，"
+                f"会互相覆盖，请改用不同的 name")
         try:
             download(s["url"], dest)
         except (urllib.error.URLError, RuntimeError, OSError,
