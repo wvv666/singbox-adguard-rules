@@ -1,33 +1,14 @@
-<div align="center">
-<h1 align="center">singbox-adguard-rules</h1>
-<h3 align="center">sing-box 广告拦截规则集（自动同步 · 合并去重 · 每日更新）</h3>
+# singbox-adguard-rules
 
-<p align="center">
-  <a href="https://github.com/wvv666/singbox-adguard-rules">
-    <img src="https://img.shields.io/github/last-commit/wvv666/singbox-adguard-rules?style=flat-square&color=blue" alt="last update" />
-  </a>
-  <a href="https://github.com/wvv666/singbox-adguard-rules/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/wvv666/singbox-adguard-rules?style=flat-square&color=9cf" alt="license" />
-  </a>
-  <a href="https://github.com/wvv666/singbox-adguard-rules/actions/workflows/sync-and-compile.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/wvv666/singbox-adguard-rules/sync-and-compile.yml?style=flat-square&color=brightgreen" alt="CI" />
-  </a>
-</p>
+sing-box 广告拦截规则集：自动同步上游规则、合并去重、编译为 `.srs`，每日更新。
 
-<p align="center">
-  <b>🚫 广告拦截 | 🔄 每日更新 | 🧹 合并去重 | 🛡️ sing-box .srs</b>
-</p>
+![last update](https://img.shields.io/github/last-commit/wvv666/singbox-adguard-rules?style=flat-square&color=blue)
+![license](https://img.shields.io/github/license/wvv666/singbox-adguard-rules?style=flat-square&color=9cf)
+![CI](https://img.shields.io/github/actions/workflow/status/wvv666/singbox-adguard-rules/sync-and-compile.yml?style=flat-square&color=brightgreen)
 
-<p align="center">
-  <a href="#-项目统计">项目统计</a> •
-  <a href="#-规则订阅">规则订阅</a> •
-  <a href="#-上游列表">上游列表</a> •
-  <a href="#-完善项目">完善项目</a>
-</p>
+[项目统计](#-项目统计) • [规则订阅](#-规则订阅) • [上游列表](#-上游列表) • [完善项目](#-完善项目)
 
 ---
-
-</div>
 
 ## 📊 项目统计
 
@@ -37,14 +18,14 @@
 📈 合并规则集（去重后）:
    combined 258,311 条  （AdGuard + hosts 全量）
    adguard  241,130 条  （仅 AdGuard 语法）
-   hosts    17,181 条  （仅 hosts 格式）
+   hosts     17,181 条  （仅 hosts 格式）
 
 📦 单源规则集:
    217heidai  201,338 条   GOODBYEADS-dns  115,498 条
    anti-ad    102,187 条   qq5460168       15,188 条
-   10007-adb  13,201 条   10007-all       17,181 条
-   GOODBYEADS-allow    92 条（白名单例外）
-
+   10007-adb   13,201 条   10007-all       17,181 条
+   GOODBYEADS-allow      92 条（白名单例外）
+```
 
 ## 📥 规则订阅
 
@@ -95,6 +76,4 @@
 - **更换/新增广告源**：编辑 [`sources.json`](sources.json)（加/删/改 URL 与 type）→ push → CI 自动完成下载、转换、编译、提交
 - **问题反馈**：欢迎提交 [Issue](https://github.com/wvv666/singbox-adguard-rules/issues)（误杀/漏拦截）
 
-<div align="center">
-  <b>如果觉得有用，请点个 ⭐ 支持一下！</b>
-</div>
+如果觉得有用，请点个 ⭐ 支持一下！
