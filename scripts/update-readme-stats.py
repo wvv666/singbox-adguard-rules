@@ -62,8 +62,6 @@ def build_stats_block(out: Path) -> str:
         return f"{n:,}"
 
     return (
-        "🗓️ 每日更新（北京时间 10:00 自动同步并重新编译）\n"
-        "\n"
         "📈 合并规则集（去重后）:\n"
         f"   combined {fmt(c)} 条  （AdGuard + hosts 全量）\n"
         f"   adguard  {fmt(a)} 条  （仅 AdGuard 语法）\n"
@@ -82,13 +80,13 @@ def build_stats_block(out: Path) -> str:
 
 def update_readme(readme: Path, out: Path) -> str:
     text = readme.read_text(encoding="utf-8")
-    # 先定位「## 📊 项目统计」后的第一个 fenced 块，再构建统计（避免产物缺失时误报）
-    pattern = re.compile(r"(## 📊 项目统计\n\n```\n).*?(```)", re.S)
+    # 统计块：## 📊 项目统计 之后（可含说明段落）到第一个 fenced 块
+    pattern = re.compile(r"(## 📊 项目统计\n.*?\n```\n)(.*?)(\n```)", re.S)
     m = pattern.search(text)
     if not m:
         raise RuntimeError("README 统计块匹配失败（未找到 ## 📊 项目统计 后的 fenced 块）")
     block = build_stats_block(out)
-    return text[:m.start(1)] + m.group(1) + block + "\n" + text[m.end(2):]
+    return text[:m.start(2)] + block + text[m.end(2):]
 
 
 def main() -> None:

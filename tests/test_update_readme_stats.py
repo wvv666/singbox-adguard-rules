@@ -20,9 +20,9 @@ README_TEMPLATE = """# test
 
 ## 📊 项目统计
 
-```
-🗓️ 每日更新（北京时间 10:00 自动同步并重新编译）
+每日更新（北京时间 10:00 自动同步并重新编译）。
 
+```
 📈 合并规则集（去重后）:
    combined 999 条  （AdGuard + hosts 全量）
    adguard  999 条  （仅 AdGuard 语法）
