@@ -1,7 +1,0 @@
-{
-  "tag": "217heidai-adblockdns",
-  "type": "remote",
-  "format": "binary",
-  "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/217heidai-adblockdns.srs",
-  "download_detour": "direct"
-}

@@ -1,7 +1,0 @@
-{
-  "tag": "hosts",
-  "type": "remote",
-  "format": "binary",
-  "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/hosts/hosts.srs",
-  "download_detour": "direct"
-}

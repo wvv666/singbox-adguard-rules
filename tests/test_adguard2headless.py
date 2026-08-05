@@ -488,28 +488,6 @@ class TestThreeProducts(unittest.TestCase):
             hosts_texts=["# 空 hosts\n"])
         self.assertEqual(result["products"], {})
 
-    def test_rule_set_refs(self):
-        refs = conv.build_rule_set_refs(
-            "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out",
-            {
-                "combined": "merged/combined/combined.srs",
-                "hosts": "merged/hosts/hosts.srs",
-                "217heidai": "converted/adguard/217heidai.srs",
-            })
-        self.assertEqual(set(refs), {"combined", "hosts", "217heidai"})
-        ref = refs["combined"]
-        self.assertEqual(ref["tag"], "combined")
-        self.assertEqual(ref["type"], "remote")
-        self.assertEqual(ref["format"], "binary")
-        self.assertEqual(ref["url"],
-            "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/combined/combined.srs")
-        self.assertEqual(ref["download_detour"], "direct")
-
-    def test_rule_set_refs_base_url_slash(self):
-        # base_url 尾部斜杠不产生双斜杠
-        refs = conv.build_rule_set_refs("https://example.com/base/", {"hosts": "merged/hosts/hosts.srs"})
-        self.assertEqual(refs["hosts"]["url"], "https://example.com/base/merged/hosts/hosts.srs")
-
 
 class TestFullTree(unittest.TestCase):
     """完整产物树：单源转换 + 合并去重（原始行去重）。"""
@@ -568,7 +546,7 @@ class TestFullTree(unittest.TestCase):
         self.assertIn("0.0.0.0 host.example.com", merged["combined"]["text"])
 
     def test_write_output_tree(self):
-        # CLI 目录树集成：sources/converted/merged/rule-sets 全部生成
+        # CLI 目录树集成：sources/converted/merged 全部生成（rule-sets/ 已按用户要求移除）
         with tempfile.TemporaryDirectory() as td:
             out = Path(td) / "out"
             result = conv.convert_all(
@@ -577,8 +555,7 @@ class TestFullTree(unittest.TestCase):
             conv.write_output_tree(
                 out, result,
                 adguard_sources=[("a-rules.txt", "||ads.example^\n")],
-                hosts_sources=[("h.hosts", "0.0.0.0 host.example.com\n")],
-                base_url="https://example.com/filters")
+                hosts_sources=[("h.hosts", "0.0.0.0 host.example.com\n")])
             files = sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())
             self.assertEqual(files, [
                 "converted/adguard/a-rules.json",
@@ -589,19 +566,9 @@ class TestFullTree(unittest.TestCase):
                 "merged/combined/combined.txt",
                 "merged/hosts/hosts.json",
                 "merged/hosts/hosts.txt",
-                "rule-sets/a-rules.json",
-                "rule-sets/adguard.json",
-                "rule-sets/combined.json",
-                "rule-sets/h.json",
-                "rule-sets/hosts.json",
                 "sources/adguard/a-rules.txt",
                 "sources/hosts/h.hosts",
             ])
-            # 引用 url 指向真实产物相对路径
-            ref = json.loads((out / "rule-sets" / "a-rules.json").read_text(encoding="utf-8"))
-            self.assertEqual(ref["url"], "https://example.com/filters/converted/adguard/a-rules.srs")
-            ref2 = json.loads((out / "rule-sets" / "combined.json").read_text(encoding="utf-8"))
-            self.assertEqual(ref2["url"], "https://example.com/filters/merged/combined/combined.srs")
 
     def test_convert_all_no_empty_product(self):
         # 纯注释输入：不生成空 merged 产物
@@ -620,14 +587,11 @@ class TestFullTree(unittest.TestCase):
             conv._check_name_conflicts([("a.txt", "x")], [("a.hosts", "y")]),
             [])  # 跨 kind 同名不冲突（converted/ 子目录分离）
 
-    def test_reserved_name_only_warns(self):
-        # 输入叫 hosts.txt：不报错（目录分离），仅保留名警告
+    def test_reserved_name_no_error(self):
+        # 输入叫 hosts.txt：目录分离不报错（rule-sets 已移除，无引用合并问题）
         self.assertEqual(
             conv._check_name_conflicts([], [("hosts.txt", "x")]),
             [])
-        self.assertEqual(
-            conv._warn_reserved_names([], [("hosts.txt", "x")]),
-            ["hosts"])
 
 
 class TestOutputShape(unittest.TestCase):

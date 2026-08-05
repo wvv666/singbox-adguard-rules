@@ -1,7 +1,0 @@
-{
-  "tag": "adguard",
-  "type": "remote",
-  "format": "binary",
-  "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs",
-  "download_detour": "direct"
-}

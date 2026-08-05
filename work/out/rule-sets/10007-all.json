@@ -1,7 +1,0 @@
-{
-  "tag": "10007-all",
-  "type": "remote",
-  "format": "binary",
-  "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/hosts/10007-all.srs",
-  "download_detour": "direct"
-}

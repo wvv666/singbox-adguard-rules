@@ -503,35 +503,14 @@ def convert_all(adguard_sources: list[tuple[str, str]],
     return {"per_source": per_source, "merged": merged, "_ignored": ignored}
 
 
-def build_rule_set_refs(base_url: str, product_paths: dict[str, str]) -> dict[str, dict]:
-    """生成 sing-box route.rule_set 引用条目。
-
-    product_paths: 产物名 → 相对产物路径（如 "merged/combined/combined.srs"），
-    url = <base_url>/<相对路径>。
-    """
-    base = base_url.rstrip("/")
-    return {
-        name: {
-            "tag": name,
-            "type": "remote",
-            "format": "binary",
-            "url": f"{base}/{relpath}",
-            "download_detour": "direct",
-        }
-        for name, relpath in product_paths.items()
-    }
-
-
 def write_output_tree(out_dir: Path, result: dict,
                       adguard_sources: list[tuple[str, str]],
-                      hosts_sources: list[tuple[str, str]],
-                      base_url: Optional[str]) -> None:
+                      hosts_sources: list[tuple[str, str]]) -> None:
     """写入完整产物目录树：
 
     sources/    上游原始文件（按语法分类）
     converted/  每个源的转换产物 json（srs 由 CI 的 sing-box compile 补）
     merged/     合并去重产物（原始文件 + json）
-    rule-sets/  sing-box 引用条目（每个源 + 每个合并产物）
     """
     out = out_dir
     out.mkdir(parents=True, exist_ok=True)
@@ -559,23 +538,6 @@ def write_output_tree(out_dir: Path, result: dict,
             json.dumps({"version": 3, "rules": m["rules"]}, indent=2, ensure_ascii=False),
             encoding="utf-8")
         print(f"written: {d / f'{name}.txt'} / {d / f'{name}.json'}", file=sys.stderr)
-    # ④ rule-sets/：引用条目（每个源 + 每个合并产物，url 指向真实产物相对路径）
-    if base_url:
-        # 单源产物：converted/{kind}/{stem}.srs；合并产物：merged/{name}/{name}.srs
-        product_paths: dict[str, str] = {}
-        for kind in ("adguard", "hosts"):
-            for name in result["per_source"][kind]:
-                product_paths[Path(name).stem] = f"converted/{kind}/{Path(name).stem}.srs"
-        for name in result["merged"]:
-            product_paths[name] = f"merged/{name}/{name}.srs"
-        refs = build_rule_set_refs(base_url, product_paths)
-        for name, ref in refs.items():
-            p = out / "rule-sets" / f"{name}.json"
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps(ref, indent=2, ensure_ascii=False), encoding="utf-8")
-            print(f"written: {p}", file=sys.stderr)
-    else:
-        print("# 未生成 rule-sets/（需要 --base-url）", file=sys.stderr)
 
 
 def _check_name_conflicts(adguard_sources: list[tuple[str, str]],
@@ -590,26 +552,14 @@ def _check_name_conflicts(adguard_sources: list[tuple[str, str]],
     return errors
 
 
-def _warn_reserved_names(adguard_sources: list[tuple[str, str]],
-                         hosts_sources: list[tuple[str, str]]) -> list[str]:
-    """输入 stem 与保留产物名（adguard/hosts/combined）冲突：仅影响 rule-sets 引用合并。"""
-    reserved = {"adguard", "hosts", "combined"}
-    all_stems = [Path(n).stem for n, _ in adguard_sources + hosts_sources]
-    return sorted(s for s in set(all_stems) if s in reserved)
-
-
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--adguard", type=Path, action="append", default=[], metavar="FILE",
                     help="AdGuard 规则文件（可重复指定多个）")
     ap.add_argument("--hosts", type=Path, action="append", default=[], metavar="FILE",
                     help="hosts 文件（可重复指定多个）")
-    ap.add_argument("--base-url", type=str, default=None,
-                    help="产物 .srs 的 URL 前缀（如 raw.githubusercontent.com/.../work/out），"
-                         "用于生成 rule-sets/ 引用条目")
     ap.add_argument("-o", "--output-dir", type=Path, default=None,
-                    help="输出目录：sources/ 原始文件、converted/ 单源转换、"
-                         "merged/ 合并去重、rule-sets/ sing-box 引用条目")
+                    help="输出目录：sources/ 原始文件、converted/ 单源转换、merged/ 合并去重")
     args = ap.parse_args()
     if not args.adguard and not args.hosts:
         ap.error("至少需要一个 --adguard 或 --hosts 输入文件")
@@ -618,13 +568,11 @@ def main() -> None:
     errors = _check_name_conflicts(adguard_sources, hosts_sources)
     if errors:
         ap.error(f"同类输入文件重名（converted/ 产物会互相覆盖）: {errors}（请改名）")
-    for reserved in _warn_reserved_names(adguard_sources, hosts_sources):
-        print(f"# 警告: 输入 '{reserved}' 与保留产物名冲突，rule-sets/ 引用会合并", file=sys.stderr)
     result = convert_all(adguard_sources, hosts_sources)
     for reason in result["_ignored"]:
         print(f"# 丢弃: {reason}", file=sys.stderr)
     if args.output_dir:
-        write_output_tree(args.output_dir, result, adguard_sources, hosts_sources, args.base_url)
+        write_output_tree(args.output_dir, result, adguard_sources, hosts_sources)
     else:
         prod = next(iter(result["merged"].values()), None)
         if prod is None:
