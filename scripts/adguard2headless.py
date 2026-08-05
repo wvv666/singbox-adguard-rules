@@ -605,7 +605,7 @@ def main() -> None:
     ap.add_argument("--hosts", type=Path, action="append", default=[], metavar="FILE",
                     help="hosts 文件（可重复指定多个）")
     ap.add_argument("--base-url", type=str, default=None,
-                    help="产物 .srs 的 URL 前缀（如 raw.githubusercontent.com/.../Filters），"
+                    help="产物 .srs 的 URL 前缀（如 raw.githubusercontent.com/.../work/out），"
                          "用于生成 rule-sets/ 引用条目")
     ap.add_argument("-o", "--output-dir", type=Path, default=None,
                     help="输出目录：sources/ 原始文件、converted/ 单源转换、"
