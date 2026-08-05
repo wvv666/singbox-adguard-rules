@@ -109,6 +109,7 @@ python3 -m unittest discover -s tests -v
 python3 scripts/download-sources.py --sources sources.json --out work/sources
 
 # 转换器 --adguard/--hosts 需逐文件传入（与 CI 相同）
+shopt -s nullglob
 ARGS=()
 for f in work/sources/adguard/*.txt; do ARGS+=(--adguard "$f"); done
 for f in work/sources/hosts/*.hosts; do ARGS+=(--hosts "$f"); done
