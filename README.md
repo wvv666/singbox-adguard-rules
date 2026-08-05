@@ -4,56 +4,55 @@
 [![Last Update](https://img.shields.io/github/last-commit/wvv666/singbox-adguard-rules?label=updated)](../../actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub Actions 从多个公开上游拉取规则，去重后使用 sing-box 官方转换器编译为 `.srs` 二进制格式。
+sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub Actions 从 `sources.json` 声明的上游拉取规则，转换为 sing-box 无头规则后编译为 `.srs` 二进制格式。
 
 ## 规则来源
 
-| # | 来源 | 格式 | 说明 |
-|---|------|------|------|
-| 1 | [AWAvenue Ads Rule](https://github.com/TG-Twilight/AWAvenue-Ads-Rule) | sing-box JSON | 综合广告/追踪拦截 |
-| 2 | [GOODBYEADS](https://github.com/8680/GOODBYEADS) | AdGuard TXT | DNS 级广告拦截 |
-| 3 | [10007](https://lingeringsound.github.io/10007/) | AdGuard TXT | ADB 广告拦截 |
-| 4 | [qq5460168/666](https://github.com/qq5460168/666) | sing-box JSON | 多格式去广告规则 |
-| 5 | [217heidai/adblockfilters](https://github.com/217heidai/adblockfilters) | AdGuard TXT | 合并去广告规则（16+ 上游） |
-| 6 | [anti-AD](https://github.com/privacy-protection-tools/anti-AD) | AdGuard TXT | 国内广告拦截 |
-| 7 | [REIJI007/AdBlock_Rule_For_Sing-box](https://github.com/REIJI007/AdBlock_Rule_For_Sing-box) | sing-box JSON | 综合广告拦截 |
+源清单见 [`sources.json`](sources.json)（新增/更换源 = 编辑该文件并推送，CI 自动全流程）。
+
+| 名称 | 来源 | 类型 | 说明 |
+|------|------|------|------|
+| `217heidai-adblockdns` | [217heidai/adblockfilters](https://github.com/217heidai/adblockfilters) | AdGuard | 合并去广告规则（16+ 上游） |
+| `GOODBYEADS-dns` | [GOODBYEADS](https://github.com/8680/GOODBYEADS) | AdGuard | DNS 级广告拦截 |
+| `anti-ad-adguard` | [anti-AD](https://github.com/privacy-protection-tools/anti-AD) | AdGuard | 国内广告拦截 |
+| `qq5460168-dns` | [qq5460168/666](https://github.com/qq5460168/666) | AdGuard | 多格式去广告规则 |
+| `10007-adb` | [10007](https://lingeringsound.github.io/10007/) | AdGuard | ADB 广告拦截 |
+| `GOODBYEADS-allow` | [GOODBYEADS](https://github.com/8680/GOODBYEADS) | AdGuard | 白名单例外 |
+| `10007-all` | [10007](https://lingeringsound.github.io/10007/) | hosts | hosts 格式拦截 |
 
 ## 编译产物
 
-所有文件位于 `Filters/` 目录：
+CI 产物位于 `work/out/`（sources 原始文件 / converted 单源 / merged 合并去重 / rule-sets 引用配置），全部入库可下载：
 
 | 文件 | 说明 | 下载链接 |
 |------|------|----------|
-| `combined.srs` | **合并去重版（推荐）** | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/combined.srs) |
-| `AWAvenue-Ads-Rule-Singbox.srs` | 单源：AWAvenue | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/AWAvenue-Ads-Rule-Singbox.srs) |
-| `GOODBYEADS-dns.srs` | 单源：GOODBYEADS | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/GOODBYEADS-dns.srs) |
-| `adb.srs` | 单源：10007 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/adb.srs) |
-| `qq5460168-666-Singbox.srs` | 单源：666 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/qq5460168-666-Singbox.srs) |
-| `217heidai-adblockdns.srs` | 单源：217heidai | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/217heidai-adblockdns.srs) |
-| `anti-ad.srs` | 单源：anti-AD | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/anti-ad.srs) |
-| `REIJI007-adblock_reject.srs` | 单源：REIJI007 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/REIJI007-adblock_reject.srs) |
+| `merged/combined/combined.srs` | **合并去重版（AdGuard + hosts，推荐）** | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/combined/combined.srs) |
+| `merged/adguard/adguard.srs` | AdGuard 语法合并去重 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) |
+| `merged/hosts/hosts.srs` | hosts 语法合并去重 | [下载](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/hosts/hosts.srs) |
+| `converted/adguard/<源名>.srs` | 单源转换 | 见 [work/out/converted](work/out/converted) |
+| `rule-sets/*.json` | sing-box 引用条目（可直接粘贴） | 见 [work/out/rule-sets](work/out/rule-sets) |
 
-单源文件保留供需要精细控制的用户。
+每个产物同时保留**原始规则文件（.txt/.hosts）**与**无头规则 JSON 源**，便于检查与复用。
 
 ## 使用方法
 
-在 sing-box 配置中添加规则集：
+在 sing-box 配置中添加规则集（`rule-sets/combined.json` 的内容可直接粘贴进 `route.rule_set`）：
 
 ```jsonc
 {
   "route": {
     "rules": [
       {
-        "rule_set": ["geosite-category-ads-all"],
+        "rule_set": ["combined"],
         "outbound": "block"
       }
     ],
     "rule_set": [
       {
-        "tag": "geosite-category-ads-all",
+        "tag": "combined",
         "type": "remote",
         "format": "binary",
-        "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/Filters/combined.srs",
+        "url": "https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/combined/combined.srs",
         "download_detour": "direct"
       }
     ]
@@ -64,52 +63,57 @@ sing-box 广告规则自动同步、合并去重与编译。每日通过 GitHub 
 ## 工作流程
 
 ```
-上游源 (JSON/TXT) → 下载 → 等价转换与精确去重 → combined.txt → sing-box 官方转换 → combined.srs
-                                                               ↘ 单源编译/转换 → 各 .srs 文件
+sources.json (源清单) → download-sources.py (下载 + WAF 污染检测)
+                     → adguard2headless.py (AdGuard/hosts → 无头规则 JSON)
+                     → sing-box rule-set compile → .srs
+                     → merged 三类去重产物 + rule-sets 引用 → 提交
 ```
 
-1. 从 7 个上游源下载最新规则
-2. 将 sing-box JSON 中可等价表示的域名、域名后缀、关键词和正则转换为 AdGuard 语法
-3. 原样保留 TXT 中的例外、通配符、正则、hosts、逐行域名和 `$important` 等规则并精确去重
-4. 使用官方 `sing-box rule-set convert --type adguard` 转换合并规则，单源 JSON 使用 `compile`
-5. 提交并推送变更
-
-AdGuard 转换行为和受支持语法以 [sing-box 官方兼容性文档](https://sing-box.sagernet.org/zh/configuration/rule-set/adguard/) 为准。JSON 的结构和字段语义遵循官方的[源文件格式](https://sing-box.sagernet.org/zh/configuration/rule-set/source-format/)与[无头规则](https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/)文档。
-
-不受官方转换器支持的路径规则和描述符会被跳过。无法等价表示为扁平 AdGuard DNS 规则的 JSON 内容，例如 `ip_cidr`、带端口或进程条件的 AND 规则、逻辑规则和 `invert`，会让合并任务明确失败，而不会被静默丢弃或扩大匹配范围。
+1. 从 `sources.json` 声明的源下载最新规则（含 HTML/WAF 拦截页污染检测，污染即失败）
+2. 使用**最新版 sing-box**（GitHub API 解析 latest release，版本不符即失败）
+3. `adguard2headless.py` 将 AdGuard/hosts 语法转换为 sing-box 无头规则 JSON（支持 `$dnstype`、`$client`、IP、端口等官方转换器丢弃的语法）
+4. 合并去重分三类：adguard / hosts / combined（原始行去重 + 语义分桶 + 父域精简）
+5. 编译全部 `.srs`，提交 `work/out/` 产物
 
 ## 自动更新
 
 - **定时**：每天北京时间 10:00 自动运行
 - **手动**：在 [Actions](../../actions) 页面触发
+- **新增规则**：编辑 `sources.json` 添加条目 → 推送 → CI 自动下载/转换/编译/合并
 
 ## 项目结构
 
 ```
 ├── .github/workflows/
-│   └── sync-and-compile.yml    # CI 工作流
-├── Filters/                    # 编译产物（.srs 文件）
+│   └── sync-and-compile.yml    # CI 工作流（latest sing-box + 源清单驱动）
+├── sources.json                # 源清单（URL + 类型）
 ├── scripts/
-│   └── merge-rules.py          # 去重合并脚本
-├── LICENSE
+│   ├── download-sources.py     # 按清单下载 + WAF 污染检测
+│   ├── adguard2headless.py     # AdGuard/hosts → 无头规则 JSON 转换器
+│   └── merge-rules.py          # （旧）去重合并脚本
+├── tests/                      # 单元测试
+├── work/out/                   # CI 产物（sources/converted/merged/rule-sets）
 └── README.md
 ```
 
-源文件由 CI 每次运行时从上游下载，不保留在仓库中。
-
 ## 本地验证
 
-合并脚本仅依赖 Python 3.10+ 标准库。运行测试：
+转换器仅依赖 Python 3.10+ 标准库。运行测试：
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-如需使用已下载到 `Filters/` 的上游文件生成并转换合并规则：
+本地完整跑一遍（下载 → 转换 → 产物）：
 
 ```bash
-python3 scripts/merge-rules.py
-sing-box rule-set convert --type adguard --output Filters/combined.srs Filters/combined.txt
+python3 scripts/download-sources.py --sources sources.json --out work/sources
+python3 scripts/adguard2headless.py \
+  --adguard work/sources/adguard/*.txt \
+  --hosts  work/sources/hosts/*.hosts \
+  --base-url https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out \
+  -o work/out
+# 编译 .srs 需 sing-box 二进制（CI 自动完成）
 ```
 
 ## 许可证

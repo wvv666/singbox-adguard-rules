@@ -1,0 +1,128 @@
+{
+  "version": 3,
+  "rules": [
+    {
+      "type": "logical",
+      "mode": "and",
+      "rules": [
+        {
+          "invert": true,
+          "domain_suffix": [
+            "connectivitycheck.gstatic.com"
+          ]
+        },
+        {
+          "type": "logical",
+          "mode": "and",
+          "rules": [
+            {
+              "invert": true,
+              "domain_regex": [
+                "(^|\\.)acs\\.m\\.taobao\\.com(\\.|$)",
+                "(^|\\.)cdn.*\\.porn300\\.com$",
+                "(^|\\.)krebsonsecurity\\.com(\\.|$)",
+                "(^|\\.)s\\-plugins\\.wordpress\\.org(\\.|$)",
+                "(^|\\.)smartpixel\\.tv(\\.|$)",
+                ":\\/\\/.*[.]wp[.]pl\\/[a-z0-9_]+[.][a-z]+[/:&?]?"
+              ],
+              "domain": [
+                "www.twitch.tv"
+              ],
+              "domain_suffix": [
+                "acs.m.taobao.com",
+                "ad.10010.com",
+                "ad.abchina.com",
+                "ad.kazakinfo.com",
+                "ad.ourgame.com",
+                "adblock.adguard.com",
+                "adcdn.pingan.com",
+                "admin.mailchimp.com",
+                "adv.bloop.info",
+                "advert.kf5.com",
+                "alllaw.112.2o7.net",
+                "ap6.ssl.msdk.qq.com",
+                "api.ads.tvb.com",
+                "app-advertise.zhihuishu.com",
+                "app.message.sonicwall.com",
+                "banner.dna.fi",
+                "broadcastlv.chat.bilibili.com",
+                "buyad.bi-xenon.cn",
+                "c.y.qq.com",
+                "captcha.su.baidu.com",
+                "cbsi.map.fastly.net",
+                "cdi.ofiii.com",
+                "cdn.bootcdn.net",
+                "cdn.datatables.net",
+                "chaturbate.com",
+                "cnlogin.cainiao.com",
+                "content.ingbank.pl",
+                "cstaticdun.126.net",
+                "data.sec.miui.com",
+                "data.service.paypal.com",
+                "developers.google.com",
+                "dl.reg.163.com",
+                "download.adguard.com",
+                "equifaxps.122.2o7.net",
+                "fino.svc.litv.tv",
+                "fp-it.fengkongcloud.com",
+                "gma.alicdn.com",
+                "hbbtv.kika.de",
+                "hbbtv.prosieben.de",
+                "hbbtv.redbutton.de",
+                "hbbtv.zdf.de",
+                "img.ads.tvb.com",
+                "inews.gtimg.com",
+                "infolink.pavv.co.kr",
+                "injections.adguard.org",
+                "kiplinger.112.2o7.net",
+                "local.adguard.org",
+                "logging.apache.org",
+                "login.gaijin.net",
+                "m.ctrip.com",
+                "metrics.torproject.org",
+                "mhc-ajax-eu-s2.myhomescreen.tv",
+                "mhc-ajax-eu.myhomescreen.tv",
+                "mhc-xpana-eu-s2.myhomescreen.tv",
+                "mhc-xpana-eu.myhomescreen.tv",
+                "minorshort.weixin.qq.com",
+                "oauth-login-drcn.platform.dbankcloud.com",
+                "onl.bz",
+                "optout.rlcdn.com",
+                "pgpartner.com",
+                "pics.porn300.com",
+                "puma.112.2o7.net",
+                "puui.qpic.cn",
+                "qlogo.cn",
+                "redirect.disqus.com",
+                "reports.adguard.com",
+                "s.optnx.com",
+                "s1.wp.com",
+                "sgqcvfjvr.onet.pl",
+                "shminorshort.weixin.qq.com",
+                "stats.britishbaseball.org.uk",
+                "support.weixin.qq.com",
+                "thumbor.thedailymeal.com",
+                "track2.royalmail.com",
+                "tracker.ai.xiaomi.com",
+                "vitacost.122.2o7.net",
+                "vodafonelimited.tt.omtrdc.net",
+                "waimai-guide.ele.me",
+                "webstatic.nero.com",
+                "webtrack.dhlglobalmail.com",
+                "webzjcaptcha.reg.163.com",
+                "wl.jd.com",
+                "wwwimage-tve.cbsstatic.com",
+                "zhuti.xiaomi.com"
+              ]
+            },
+            {
+              "domain": [
+                "__singbox_never_match__"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
