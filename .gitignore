@@ -4,8 +4,4 @@ sing-box
 __pycache__/
 
 # Source files (downloaded by CI, not tracked)
-Filters/*.json
-Filters/*.txt
-
-# Intermediate download dir (final products under work/out/ ARE tracked)
 work/sources/
