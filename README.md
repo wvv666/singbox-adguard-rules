@@ -16,14 +16,14 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 
 ```
 📈 合并规则集（去重后）:
-   combined 257,793 条  （AdGuard + hosts 全量）
-   adguard  240,612 条  （仅 AdGuard 语法）
-   hosts    17,181 条  （仅 hosts 格式）
+   combined 280,381 条  （AdGuard + hosts 全量）
+   adguard  280,345 条  （仅 AdGuard 语法）
+   hosts    17,260 条  （仅 hosts 格式）
 
 📦 单源规则集:
-   217heidai  192,043 条   GOODBYEADS-dns  116,538 条
-   anti-ad    102,701 条   qq5460168       15,199 条
-   10007-adb  13,201 条   10007-all       17,181 条
+   217heidai  240,455 条   GOODBYEADS-dns  116,582 条
+   anti-ad    103,884 条   qq5460168       15,296 条
+   10007-adb  13,315 条   10007-all       17,260 条
    GOODBYEADS-allow    92 条（白名单例外）
 ```
 
