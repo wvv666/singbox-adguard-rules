@@ -5,3 +5,10 @@ __pycache__/
 
 # Source files (downloaded by CI, not tracked)
 work/sources/
+
+# 中间产物不入库（仓库体积控制）：
+#   - work/out/sources/**  上游原件副本（上游仓库已有，无需重复保存）
+#   - work/out/**/*.json    sing-box source 格式，仅作为编译 .srs 的输入
+# 订阅者真正需要的是 .srs，以及 merged/**/*.txt（可读规则）。
+work/out/sources/
+work/out/**/*.json

@@ -76,4 +76,10 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 - **更换/新增广告源**：编辑 [`sources.json`](sources.json)（加/删/改 URL 与 type）→ push → CI 自动完成下载、转换、编译、提交
 - **问题反馈**：欢迎提交 [Issue](https://github.com/wvv666/singbox-adguard-rules/issues)（误杀/漏拦截）
 
+### 维护说明
+
+- **仓库体积策略**：只提交订阅产物 `.srs` 与合并后的可读规则 `merged/**/*.txt`；作为编译输入的中间 JSON 和上游原件不入库（早期历史提交中仍保留）。
+- **冗余剪枝**：合并时会删掉「已被同条件 `domain_suffix` 覆盖」的精确域名（如 `a.example.com` 已被 `example.com` 覆盖），拦截范围不变但产物更小。
+- **自动防退化**：CI 校验 sing-box 二进制 SHA-256（读取 Release 资产 digest）；若 combined 规则数骤降超过 20%，判定上游源异常并拒绝提交。
+
 如果觉得有用，请点个 ⭐ 支持一下！

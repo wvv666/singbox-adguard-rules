@@ -103,6 +103,32 @@ class TestStats(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 urs.update_readme(readme, out)
 
+    def test_parse_combined_count(self):
+        self.assertEqual(urs.parse_combined_count("combined 257,793 条  （AdGuard）"), 257793)
+        self.assertIsNone(urs.parse_combined_count("no numbers here"))
+
+    def test_drop_guard_triggers_on_big_drop(self):
+        with tempfile.TemporaryDirectory() as td:
+            readme, out = make_fixture(td)  # README 写死 999，实际产物只有 3
+            with self.assertRaises(RuntimeError) as ctx:
+                urs.update_readme(readme, out, max_drop_pct=20)
+            self.assertIn("骤降", str(ctx.exception))
+
+    def test_drop_guard_allows_normal_drop(self):
+        with tempfile.TemporaryDirectory() as td:
+            readme, out = make_fixture(td)
+            text = readme.read_text(encoding="utf-8").replace("combined 999 条", "combined 4 条")
+            readme.write_text(text, encoding="utf-8")
+            # 4 → 3 只跌 25%? 不，4→3 是 25%，用 30% 阈值放行
+            new_text = urs.update_readme(readme, out, max_drop_pct=30)
+            self.assertIn("combined 3 条", new_text)
+
+    def test_drop_guard_disabled_by_default(self):
+        with tempfile.TemporaryDirectory() as td:
+            readme, out = make_fixture(td)
+            new_text = urs.update_readme(readme, out)
+            self.assertIn("combined 3 条", new_text)
+
 
 if __name__ == "__main__":
     unittest.main()

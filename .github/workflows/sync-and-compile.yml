@@ -32,10 +32,12 @@ jobs:
 
       - name: Resolve sing-box latest version
         id: singbox
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tag=$(curl -fsSL --retry 3 --retry-all-errors \
-            https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          # 用 gh api（token 5000 次/小时）而非匿名 REST（60 次/小时，共享 runner IP 易被限流）
+          tag=$(gh api repos/SagerNet/sing-box/releases/latest --jq .tag_name)
           if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
             echo "::error::Unexpected sing-box release tag: $tag"
             exit 1
@@ -52,6 +54,8 @@ jobs:
 
       - name: Install sing-box (latest)
         if: steps.cache-singbox.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           tag="${{ steps.singbox.outputs.tag }}"
@@ -61,23 +65,39 @@ jobs:
             ARM64) arch="arm64" ;;
             *)    echo "::error::Unsupported runner arch: ${{ runner.arch }}"; exit 1 ;;
           esac
-          url="https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-linux-${arch}.tar.gz"
+          asset="sing-box-${version}-linux-${arch}.tar.gz"
+          url="https://github.com/SagerNet/sing-box/releases/download/${tag}/${asset}"
           echo "Installing sing-box ${version} (${arch})..."
           curl -fSL --retry 3 --retry-all-errors "$url" -o sing-box.tar.gz
-          # 校验 SHA-256（防 release 资产被替换；兼容 "hash  filename" 与 "filename: hash" 两种格式）
-          curl -fSL --retry 3 --retry-all-errors "${url}.sha256sum" -o sing-box.tar.gz.sha256sum
-          expected=$(grep -oE '[0-9a-fA-F]{64}' sing-box.tar.gz.sha256sum | head -1 | tr 'A-F' 'a-f')
+
+          # SHA-256 校验：sing-box 新版本移除了 *.tar.gz.sha256sum 旁文件
+          # （v1.14 起 404，是 2026-08 之后每日 scheduled run 失败的原因）。
+          # 改为读取 GitHub Release 资产自带的 digest 字段，并保留旁文件作为兜底。
+          expected=""
+          digest=$(gh api "repos/SagerNet/sing-box/releases/tags/${tag}" \
+                     --jq ".assets[] | select(.name == \"${asset}\") | .digest // empty" || true)
+          if [[ -n "$digest" ]]; then
+            expected="${digest#sha256:}"
+            echo "checksum source: release asset digest"
+          elif curl -fsSL --retry 2 --retry-all-errors "${url}.sha256sum" \
+                 -o sing-box.tar.gz.sha256sum 2>/dev/null; then
+            expected=$(grep -oE '[0-9a-fA-F]{64}' sing-box.tar.gz.sha256sum | head -1 | tr 'A-F' 'a-f')
+            echo "checksum source: .sha256sum sidecar"
+          fi
           actual=$(sha256sum sing-box.tar.gz | awk '{print $1}')
-          echo "sha256 expected: ${expected}"
+          echo "sha256 expected: ${expected:-<unavailable>}"
           echo "sha256 actual:   ${actual}"
-          if [[ "$expected" != "$actual" ]]; then
+          if [[ -z "$expected" ]]; then
+            echo "::warning::上游未提供 sha256（无 digest 也无旁文件），跳过校验"
+          elif [[ "$expected" != "$actual" ]]; then
             echo "::error::sing-box 二进制 checksum 校验失败"
             exit 1
           fi
+
           tar -xzf sing-box.tar.gz
           mkdir -p "$HOME/.local/bin"
           mv sing-box-*/sing-box "$HOME/.local/bin/"
-          rm -rf sing-box.tar.gz sing-box-*
+          rm -rf sing-box.tar.gz sing-box-* sing-box.tar.gz.sha256sum
 
       - name: Verify sing-box version matches latest
         run: |
@@ -140,8 +160,8 @@ jobs:
           echo "merged files:"
           ls -la work/out/merged/*/
 
-      - name: Refresh README stats
-        run: python3 scripts/update-readme-stats.py --readme README.md --out work/out
+      - name: Refresh README stats (with upstream-regression guard)
+        run: python3 scripts/update-readme-stats.py --readme README.md --out work/out --max-drop-pct 20
 
       - name: Summary
         run: |
@@ -159,9 +179,12 @@ jobs:
 
       - name: Commit and Push
         run: |
+          set -euo pipefail
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
+          # 只提交订阅产物（.srs）与合并后的可读 txt；中间 JSON / 上游原件已由
+          # .gitignore 排除，避免每日 ~40MB 的仓库膨胀。
           git add work/out/ README.md sources.json scripts/ tests/ .github/
 
           if git diff --quiet && git diff --staged --quiet; then
