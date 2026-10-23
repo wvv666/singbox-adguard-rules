@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import ipaddress
 import json
 import re
@@ -449,6 +450,90 @@ def convert_multi(adguard_texts: list[str], hosts_texts: list[str]) -> dict:
     return {"products": products, "_ignored": ignored}
 
 
+_DOMAIN_FIELDS = ("domain", "domain_suffix", "domain_regex")
+
+
+def _cond_key(rule: dict) -> str:
+    """规则的条件签名：除域名类字段外的全部键（invert/query_type/port/...）。
+
+    仅条件签名相同的规则之间才允许做精确域名剪枝——不同条件的规则是
+    不同分支（同一条 default rule 内多条件是 AND），剪枝会改变语义。
+    """
+    cond = {k: v for k, v in rule.items() if k not in _DOMAIN_FIELDS}
+    return json.dumps(cond, sort_keys=True, ensure_ascii=False)
+
+
+def _domain_covered(domain: str, suffixes: set[str]) -> bool:
+    """domain 自身或任一父域是否已在该 suffix 集合中（suffix 覆盖自身+子域）。"""
+    parts = domain.split(".")
+    return any(".".join(parts[i:]) in suffixes for i in range(len(parts)))
+
+
+def _or_scopes(rules: list[dict]) -> list[list[dict]]:
+    """收集所有「同级 OR」规则列表（dedupe 只在这些作用域内安全）。"""
+    scopes = [rules]
+    for r in rules:
+        if r.get("type") == "logical" and r.get("mode") == "or" and not r.get("invert"):
+            scopes.extend(_or_scopes(r.get("rules", [])))
+    return scopes
+
+
+def _collect_domain_sets(rules: list[dict], positive: dict[str, set[str]],
+                         excluded: set[str]) -> None:
+    """递归收集正向拦截后缀（可作为覆盖依据）与排除名单（不可被动刀）。
+
+    - 非 invert 分支里的 domain_suffix → positive[条件签名]
+    - 任何 invert 分支里的域名/suffix → excluded（白名单或反向规则，必须保留）
+    """
+    for r in rules:
+        if r.get("type") == "logical":
+            if r.get("invert"):
+                _collect_domain_sets(r.get("rules", []), {}, excluded)
+            else:
+                _collect_domain_sets(r.get("rules", []), positive, excluded)
+            continue
+        if r.get("invert"):
+            for field in _DOMAIN_FIELDS:
+                excluded.update(r.get(field, []))
+            continue
+        for s in r.get("domain_suffix", []):
+            positive.setdefault(_cond_key(r), set()).add(s)
+
+
+def prune_redundant_domains(rules: list[dict]) -> list[dict]:
+    """剪掉已被 domain_suffix 完全覆盖的精确 domain 条目（语义等价）。
+
+    domain_suffix "x.com" 同时匹配 x.com 及其所有子域，因此 domain 里的
+    "x.com"、"a.x.com" 都是冗余的。典型收益：combined 产物中 hosts 源的
+    精确域名被 adguard 源的宽泛后缀覆盖，可整体删除而不改变拦截范围。
+
+    安全边界：
+    - 只删「同级 OR 作用域」里的正向规则（OR 兄弟分支仍覆盖该域名）；
+    - 只跨「条件签名相同」的规则取材（query_type/port/source_ip_cidr 必须一致）；
+    - 命中排除名单（@@ 白名单/反向规则）的域名一律保留。
+    """
+    positive: dict[str, set[str]] = {}
+    excluded: set[str] = set()
+    _collect_domain_sets(rules, positive, excluded)
+
+    for scope in _or_scopes(rules):
+        for r in list(scope):
+            if r.get("type") == "logical" or r.get("invert") or not r.get("domain"):
+                continue
+            sufs = positive.get(_cond_key(r))
+            if not sufs:
+                continue
+            kept = [d for d in r["domain"]
+                    if _domain_covered(d, excluded) or not _domain_covered(d, sufs)]
+            if len(kept) == len(r["domain"]):
+                continue
+            if kept:
+                r["domain"] = kept
+            else:
+                scope.remove(r)  # 精确域名全被覆盖且无其他匹配字段 → 该条恒不命中
+    return rules
+
+
 def _merge_dedupe_texts(texts: list[str]) -> str:
     """原始行逐行去重（保留首次出现的行），用于生成合并后的原始规则文件。"""
     seen: set[str] = set()
@@ -494,12 +579,18 @@ def convert_all(adguard_sources: list[tuple[str, str]],
         rules = convert(text, source="hosts")["rules"]
         if rules:
             merged["hosts"] = {"text": text, "rules": rules}
+    # 各合并产物先做自身剪枝（成本极低），再对 combined 的独立副本做跨产物剪枝
+    for m in merged.values():
+        m["rules"] = prune_redundant_domains(m["rules"])
     if merged:
         combined_text = _merge_dedupe_texts([m["text"] for m in merged.values()])
         combined_rules: list[dict] = []
         for m in merged.values():
-            combined_rules.extend(m["rules"])
-        merged["combined"] = {"text": combined_text, "rules": combined_rules}
+            combined_rules.extend(copy.deepcopy(m["rules"]))  # 副本：避免剪枝污染单产物
+        merged["combined"] = {
+            "text": combined_text,
+            "rules": prune_redundant_domains(combined_rules),
+        }
     return {"per_source": per_source, "merged": merged, "_ignored": ignored}
 
 
