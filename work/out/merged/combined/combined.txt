@@ -304597,13 +304597,13 @@
 ||zzymvbnjepmly.website^
 ||zzzjvqzzlarvb.top^
 !Title: anti-AD for AdGuard
-!Version: 20261028224403738936467
-!Last modified: Wed Oct 28 22:44:03 UTC 2026
-!Updated: 2026-10-28T22:44:03+00:00
+!Version: 20261030125755459405060
+!Last modified: Fri Oct 30 12:57:55 UTC 2026
+!Updated: 2026-10-30T12:57:55+00:00
 !Expires: 4 days
 !Homepage: https://anti-ad.net/
 !!!note! If you are using "AdGuard Home", please load https://anti-ad.net/easylist.txt
-!Total lines: 100126
+!Total lines: 100122
 @@||ad.azure.com^
 @@||ads.finance^
 @@||ads.taboola.com^
@@ -307569,7 +307569,6 @@
 ||datacoral.io^
 ||datado.me^
 ||datadoghq.eu^
-||datadome.co^
 ||dataholics.tech^
 ||datam.com^
 ||datamind.ru^
@@ -308062,6 +308061,7 @@
 ||e.enjuw.com^
 ||m.enjuw.com^
 ||m.enrogwm.cn^
+||nexus.ensighten.com^
 ||enter-system.com^
 ||entirelysacrament.com^
 ||js84.enyayinxiang.com^
@@ -310347,7 +310347,6 @@
 ||m.lisln.cn^
 ||list1holp.com^
 ||ini.litingxin.cn^
-||litix.io^
 ||littlebee.site^
 ||liufenghua.com^
 ||liuguoyu.wang^
@@ -311629,7 +311628,6 @@
 ||cc.pkesports.cn^
 ||pkkjxs.cn^
 ||placehold.co^
-||pladform.ru^
 ||plainplayground.com^
 ||plausible-analytics.xyz^
 ||api2.play.cn^
@@ -312375,6 +312373,8 @@
 ||seerpiu002.com^
 ||seeyourdata.de^
 ||nossl.segfault.net^
+||cdn-settings.segment.com^
+||mobile-service.segment.com^
 ||segs.jp^
 ||seismophonic.com^
 ||www-connect-secure-wellcfargo.sekolahkejarpaket.com^
@@ -315326,7 +315326,7 @@
 ! Title: 酷安广告规则
 ! Homepage: https://github.com/qq5460168/AD886
 ! by: 酷安@那个谁520
-! Last Updated: 2026-10-30 12:24:31（北京时间）
+! Last Updated: 2026-10-31 12:04:18（北京时间）
 ! Total count: 17341
 ||-normal-lq.zijieapi.com^
 ||000123456789.online^
@@ -317109,7 +317109,6 @@
 ||cdn-fusion.imgcdn.store^
 ||cdn-gcs.outfit7.com^
 ||cdn-recovery.autohome.com.cn^
-||cdn-settings.segment.com^
 ||cdn-test.mouseflow.com^
 ||cdn.004999.xyz^
 ||cdn.adapi.fotoable.com^
@@ -320484,7 +320483,6 @@
 ||mo.test.haloapps.com^
 ||mobads-logs.e.shifen.com^
 ||mobads.e.shifen.com^
-||mobile-service.segment.com^
 ||mobile.app.autohome.com.cn^
 ||mobile.launchdarkly.com^
 ||mobiorg8.com^
@@ -320673,7 +320671,6 @@
 ||newton5194sctf.xyz^
 ||newwcrsed.com^
 ||nextcps.com^
-||nexus.ensighten.com^
 ||nezqmud.com^
 ||nf2y.yt-twbg1523.vip^
 ||nfgnxkd.top^
