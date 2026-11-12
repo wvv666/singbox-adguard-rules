@@ -59,7 +59,10 @@ class Parsed:
 # ---------------------------------------------------------------- 解析
 
 def _is_domain_name(s: str) -> bool:
-    return bool(re.fullmatch(r"[a-z0-9.-]+", s)) and "." in s
+    # 下划线在 DNS 中合法（SRV 记录 _sips._tcp.x.com、CDN 主机名 dl_dir.qq.com），
+    # 官方 IsDomainName 也接受，不能按 RFC1035 主机名规则排除。
+    # 域名大小写不敏感（||Fvid.atm.youku.com^ 属合法规则），校验时忽略大小写。
+    return bool(re.fullmatch(r"[A-Za-z0-9._-]+", s)) and "." in s
 
 
 def _parse_ip_cidr(line: str) -> Optional[str]:
@@ -153,9 +156,9 @@ def parse_line(raw: str) -> Optional[Parsed]:
     if ip is not None:
         return Parsed(core=ip, is_ip=True)
 
-    # 1) 纯域名
+    # 1) 纯域名（DNS 大小写不敏感，统一小写存储）
     if _is_domain_name(line):
-        return Parsed(core=line)
+        return Parsed(core=line.lower())
 
     # 2) hosts 行
     hosts = _parse_hosts(line)
@@ -265,7 +268,7 @@ def parse_line(raw: str) -> Optional[Parsed]:
     if not _is_domain_name(check):
         return Parsed(core="", ignored_reason=f"非法域名丢弃: {line}")
 
-    p.core = rule
+    p.core = rule.lower()  # DNS 大小写不敏感
     return p
 
 

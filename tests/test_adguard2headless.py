@@ -647,6 +647,36 @@ class TestAnchorSemantics(unittest.TestCase):
         self.assertFalse(matches(rule, "x.ad1.example"))
 
 
+class TestDomainNameValidity(unittest.TestCase):
+    """域名合法性：下划线与大小写（DNS 语义，官方 IsDomainName 接受）。"""
+
+    def test_underscore_domain_kept(self):
+        # SRV 记录与 CDN 主机名含下划线，官方接受，不能按 RFC1035 排除
+        rule = single_rule(
+            "||dl_dir.qq.com^\n"
+            "||_sips._tcp.3323174.notifysrv.com^\n"
+            "||fb_servpub-a.akamaihd.net^\n")
+        self.assertEqual(rule, {"domain_suffix": [
+            "_sips._tcp.3323174.notifysrv.com",
+            "dl_dir.qq.com",
+            "fb_servpub-a.akamaihd.net",
+        ]})
+        self.assertTrue(matches(rule, "dl_dir.qq.com"))
+        self.assertTrue(matches(rule, "a.dl_dir.qq.com"))
+
+    def test_uppercase_domain_lowercased(self):
+        # DNS 大小写不敏感，统一小写存储避免重复条目
+        rule = single_rule("||Fvid.atm.youku.com^\n||fvid.atm.youku.com^\n")
+        self.assertEqual(rule, {"domain_suffix": ["fvid.atm.youku.com"]})
+        self.assertTrue(matches(rule, "fvid.atm.youku.com"))
+
+    def test_hyphenated_uppercase_hostname(self):
+        rule = single_rule(
+            "||Coordinator-Production-28516768.us-east-1.elb.amazonaws.com^\n")
+        self.assertEqual(rule, {"domain_suffix": [
+            "coordinator-production-28516768.us-east-1.elb.amazonaws.com"]})
+
+
 class TestOutputShape(unittest.TestCase):
     """输出必须能被 sing-box rule-set compile 接受（字段名/结构合法）。"""
 
