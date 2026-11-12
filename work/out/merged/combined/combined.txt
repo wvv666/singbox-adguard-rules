@@ -317731,11 +317731,11 @@
 ! Title: 酷安广告规则
 ! Homepage: https://github.com/qq5460168/AD886
 ! by: 酷安@那个谁520
-! Last Updated: 2026-11-11 12:44:15（北京时间）
-! Total count: 17305
+! Last Updated: 2026-11-12 13:46:41（北京时间）
+! Total count: 17307
 ! ────────────── 来源汇总 ──────────────
 !      8118 条  补充(Who520)
-!      2997 条  大萌主
+!      2999 条  大萌主
 !      2199 条  本地补充(data/rules/adblock.txt)
 !       342 条  茯苓
 !      2696 条  5460
@@ -321073,7 +321073,7 @@
 ||zzzzz4.52896368.com^
 ! 📋 规则来源：大萌主
 ! 🔗 原始地址：https://raw.githubusercontent.com/damengzhu/banad/main/jiekouAD.txt
-! 📊 本区规则：2997 条
+! 📊 本区规则：2999 条
 ||000123456789.online^
 ||000123456789.site^
 ||00xvppy.cn^
@@ -321801,6 +321801,7 @@
 ||f23jjd8.xyz^
 ||f77j6t2b.com^
 ||f77xv3.top^
+||f7qh.top^
 ||falsarywaybung.com^
 ||fangcunzhijian1.cn^
 ||fangfeng009.xyz^
@@ -323537,6 +323538,7 @@
 ||xn--bqro42frpg5up.cn^
 ||xn--czru2dx3eszw3lat53b.com^
 ||xn--gov-x68dy61b.shop^
+||xn--jc2a749bpa.com^
 ||xn--jvrp4x1zyfta.net^
 ||xn--swt207gl1hzc.net^
 ||xn--wxtr9fwyxk9c.xn--io0a7i^
