@@ -594,6 +594,59 @@ class TestFullTree(unittest.TestCase):
             [])
 
 
+class TestAnchorSemantics(unittest.TestCase):
+    """锚点语义对齐官方 convertor.go（并已用 sing-box rule-set match 实测校验）。
+
+    - `|x`   ：域名开头锚定（前缀），不是精确匹配
+    - `|x^`  ：前后锚点齐全 → 等价精确匹配
+    - 尾随 `|`：冗余结束锚点，官方 TrimSuffix 丢弃
+    """
+
+    def test_start_anchor_is_prefix_not_exact(self):
+        # 官方：|example.gov 命中 example.gov.cn / example.govfoo，
+        # 但不命中 www.example.gov（前缀锚定，非后缀非精确）
+        rule = single_rule("|example.gov\n")
+        self.assertEqual(rule, {"domain_regex": ["^example\\.gov"]})
+        for d in ["example.gov", "example.gov.cn", "example.govfoo",
+                  "example.government"]:
+            self.assertTrue(matches(rule, d), f"应匹配: {d}")
+        for d in ["www.example.gov", "notexample.gov", "a.example.gov"]:
+            self.assertFalse(matches(rule, d), f"不应匹配: {d}")
+
+    def test_start_and_end_anchor_is_exact(self):
+        # |example.com^ 两个锚点 → 等价精确匹配，走 domain 而非正则
+        rule = single_rule("|example.com^\n")
+        self.assertEqual(rule, {"domain": ["example.com"]})
+        self.assertTrue(matches(rule, "example.com"))
+        for d in ["www.example.com", "example.com.cn"]:
+            self.assertFalse(matches(rule, d), f"不应匹配: {d}")
+
+    def test_trailing_pipe_ignored(self):
+        # 官方 TrimSuffix("|")：@@||trackcmp.net^| 等价于 @@||trackcmp.net^
+        result = conv.convert("@@||trackcmp.net^|\n")
+        self.assertEqual(result["_ignored"], [])
+        rules = result["rules"]
+        self.assertEqual(len(rules), 1)
+        self.assertEqual(rules[0]["type"], "logical")
+        inner = rules[0]["rules"][0]
+        self.assertTrue(inner["invert"])
+        self.assertEqual(inner["domain_suffix"], ["trackcmp.net"])
+
+    def test_trailing_pipe_on_tld_rule(self):
+        # |example.com| → 前缀锚定（尾随 | 丢弃，只剩开头锚）
+        rule = single_rule("|example.com|\n")
+        self.assertEqual(rule, {"domain_regex": ["^example\\.com"]})
+        self.assertTrue(matches(rule, "example.com.cn"))
+        self.assertFalse(matches(rule, "www.example.com"))
+
+    def test_start_anchor_with_wildcard(self):
+        rule = single_rule("|ad*.example\n")
+        self.assertIn("domain_regex", rule)
+        self.assertTrue(matches(rule, "ad1.example"))
+        self.assertTrue(matches(rule, "ads.example.cn"))
+        self.assertFalse(matches(rule, "x.ad1.example"))
+
+
 class TestOutputShape(unittest.TestCase):
     """输出必须能被 sing-box rule-set compile 接受（字段名/结构合法）。"""
 

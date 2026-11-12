@@ -41,8 +41,9 @@ class Parsed:
     """一行 AdGuard 规则解析结果。"""
     core: str                    # 去锚点后的核心（域名 / 正则体 / IP）
     is_exclude: bool = False     # @@ 例外
-    is_suffix: bool = False      # || 前缀（或 scheme:// 截断，或无前缀但带 ^）
-    is_exact: bool = False       # | 前缀（精确域名）
+    is_suffix: bool = False      # || 前缀（或 scheme:// 截断）
+    is_start: bool = False       # | 前缀（域名开头锚定，非精确匹配）
+    has_end: bool = False        # ^ 尾锚点（域名在此结束）
     is_substring: bool = False   # 无前缀但带 ^：AdGuard 子串匹配（如 example.net^）
     suffix_loose: bool = False   # ||x 无 ^：x 后不限（官方测试 ||example.edu 匹配 example.edu.cn）
     is_regexp: bool = False      # /regexp/
@@ -188,21 +189,27 @@ def parse_line(raw: str) -> Optional[Parsed]:
     if rule.startswith("@@"):
         p.is_exclude = True
         rule = rule[2:]
+    # 尾随 "|" 是冗余的结束锚点，官方 convertor.go 直接 TrimSuffix 丢弃。
+    # 例：@@||trackcmp.net^| 等价于 @@||trackcmp.net^（白名单必须保留）。
+    rule = rule.rstrip("|")
     if rule.startswith("||"):
         p.is_suffix = True
         rule = rule[2:]
     elif rule.startswith("|"):
-        p.is_exact = True
+        # |x 是"域名开头锚定"而非精确匹配：官方 |example.gov 匹配
+        # example.gov 与 example.gov.cn，但不匹配 www.example.gov。
+        p.is_start = True
         rule = rule[1:]
 
     if rule.endswith("^"):
         rule = rule[:-1]
+        p.has_end = True
         # 无 || 前缀的 "x^" 是 AdGuard 子串匹配：官方测试 example.net^ 匹配
         # isexample.net（域名任意位置以完整标签边界包含 x），与 domain_suffix
         # 的"自身或其子域"不同，需转 domain_regex。
-        if not p.is_suffix and not p.is_exact:
+        if not p.is_suffix and not p.is_start:
             p.is_substring = True
-    elif p.is_suffix and not p.is_exact:
+    elif p.is_suffix:
         # ||x（无 ^）：AdGuard 语义是 x 之后不限（官方测试 ||example.edu 匹配
         # example.edu.cn），domain_suffix 表达不了（example.edu.cn 不是 example.edu
         # 的子域），转 domain_regex。
@@ -234,7 +241,7 @@ def parse_line(raw: str) -> Optional[Parsed]:
     # 带锚点的 ||1.2.3.4^ 按官方语义是域名规则（IsDomainName 接受 IP 串），走下方域名分支。
 
     # 无锚点且带修饰符的纯 IP（如 1.1.1.1$dnstype=A）：修饰符已剥离，rule 是裸 IP → ip_cidr
-    if not p.is_suffix and not p.is_exact and not p.is_substring and not p.is_exclude:
+    if not p.is_suffix and not p.is_start and not p.is_substring and not p.is_exclude:
         ip2 = _parse_ip_cidr(rule)
         if ip2 is not None:
             p.is_ip = True
@@ -274,6 +281,13 @@ def _to_regex(parsed: Parsed) -> str:
     core = parsed.core
     if parsed.is_regexp:
         return core
+    if parsed.is_start:
+        # |x（开头锚定）：域名以 x 开头，x 后不限（官方 |example.gov 匹配
+        # example.gov.cn，但不匹配 www.example.gov / notexample.gov）。
+        if parsed.has_end:
+            # |x^ 要求整串等于 x（前锚 + 后锚），与精确 domain 等价
+            return rf"^{_regex_escape_domain(core)}$"
+        return rf"^{_regex_escape_domain(core)}"
     if parsed.is_substring:
         # x^ → 域名以 x 结尾（子串语义，官方测试 isexample.net 也匹配）
         return rf"{_regex_escape_domain(core)}$"
@@ -298,9 +312,13 @@ def _to_regex(parsed: Parsed) -> str:
 def _rule_kind(p: Parsed) -> str:
     if p.is_ip:
         return "ip_cidr"
-    if p.is_regexp or p.is_substring or p.suffix_loose or WILDCARD in p.core or (p.is_suffix and p.core.startswith("*.")):
+    # |x^ 两个锚点齐全 → 等价精确匹配，直接进 domain（体积更小、无需正则）
+    if p.is_start and p.has_end and WILDCARD not in p.core:
+        return "domain"
+    if (p.is_regexp or p.is_start or p.is_substring or p.suffix_loose
+            or WILDCARD in p.core or (p.is_suffix and p.core.startswith("*."))):
         return "domain_regex"
-    if p.is_exact or not p.is_suffix:
+    if not p.is_suffix:
         return "domain"
     return "domain_suffix"
 
