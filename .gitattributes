@@ -1,3 +1,7 @@
 *.srs binary
 *.json linguist-detectable=false
 *.txt linguist-detectable=false
+# 统一 LF：Windows 侧编辑器/工具写入 CRLF 会让整个文件在 diff 里"全改"
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf

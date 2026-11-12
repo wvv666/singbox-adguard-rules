@@ -50,8 +50,11 @@ class Parsed:
     is_important: bool = False   # $important
     is_ip: bool = False          # 纯 IP / IP-CIDR 行
     query_types: list = field(default_factory=list)   # $dnstype=A → "A"
+    query_types_exclude: list = field(default_factory=list)  # $dnstype=~A → 排除
     ports: list = field(default_factory=list)         # example.com:8080 → [8080]
     source_ip_cidrs: list = field(default_factory=list)  # $client=1.1.1.0/24 → source_ip_cidr
+    deny_allow: list = field(default_factory=list)    # $denyallow=a.com|b.com → 放行
+    is_badfilter: bool = False   # $badfilter：禁用同文本的基础规则
     source: str = "adguard"      # 来源类别：adguard | hosts（auto 识别或显式指定）
     ignored_reason: str = ""     # 非空表示该行被丢弃
 
@@ -113,6 +116,16 @@ def _parse_hosts(line: str) -> Optional[Parsed]:
     return Parsed(core="", ignored_reason=f"hosts 非拦截 IP 被忽略: {line}")
 
 
+def _copy_modifiers(src: Parsed, dst: Parsed) -> None:
+    """把 $ 修饰符解析结果搬到正在解析的规则上（集中一处，避免漏字段）。"""
+    dst.is_important = src.is_important
+    dst.query_types = list(src.query_types)
+    dst.query_types_exclude = list(src.query_types_exclude)
+    dst.source_ip_cidrs = list(src.source_ip_cidrs)
+    dst.deny_allow = list(src.deny_allow)
+    dst.is_badfilter = src.is_badfilter
+
+
 def _parse_modifiers(params: str) -> Optional[Parsed]:
     """解析 $ 修饰符串（不含 $）。返回 None 表示整行丢弃。"""
     p = Parsed(core="")
@@ -123,13 +136,42 @@ def _parse_modifiers(params: str) -> Optional[Parsed]:
         elif name == "dnstype":
             if not value:
                 return None
-            for q in value.split("|"):  # AdGuard 多值用 | 分隔：$dnstype=A|AAAA
-                if q.upper() not in DNS_TYPE_WHITELIST:
-                    return None  # 未知类型整行丢弃，避免下游 compile 失败
-                p.query_types.append(q.upper())
+            # AdGuard 多值用 | 分隔：$dnstype=A|AAAA
+            # 取反写法 $dnstype=~A|~CNAME：官方语义是"排除这些类型后其余全部"，
+            # 且规范明确禁止混用（$dnstype=~A|B 等价于 $dnstype=B）。
+            raw = [q.strip() for q in value.split("|") if q.strip()]
+            negated = [q for q in raw if q.startswith("~")]
+            positive = [q for q in raw if not q.startswith("~")]
+            if negated and positive:
+                # 规范：$dnstype=~value1|value2 等效于 $dnstype=value2
+                raw = positive
+            for q in raw:
+                name_only = q.lstrip("~").upper()
+                # 未知类型整行丢弃，避免下游 compile 失败
+                if name_only not in DNS_TYPE_WHITELIST:
+                    return None
+                if q.startswith("~"):
+                    p.query_types_exclude.append(name_only)
+                else:
+                    p.query_types.append(name_only)
         elif name == "dnsrewrite":
             if value not in ("0.0.0.0", "::"):
                 return None
+        elif name == "denyallow":
+            # $denyallow=a.com|b.com：拦截范围内的这些域名放行。
+            # 官方说明为域名列表（非掩码），逐个校验后由 build_rules 转成
+            # 「主规则 AND NOT denyallow」结构。
+            if not value:
+                return None
+            for d in value.split("|"):
+                d = d.strip().lower()
+                if not d or WILDCARD in d or not _is_domain_name(d):
+                    return None
+                p.deny_allow.append(d)
+        elif name == "badfilter":
+            # $badfilter：禁用文本相同的另一条基础规则，需在预处理阶段剔除，
+            # 这里只打标记，由 convert() 统一下手。
+            p.is_badfilter = True
         elif name == "client":
             # $client=IP|CIDR → source_ip_cidr；注：仅支持 IPv4（_parse_ip_cidr），
             # IPv6 客户端与客户端名/标签无法映射，整行丢弃（fail-closed）
@@ -176,17 +218,13 @@ def parse_line(raw: str) -> Optional[Parsed]:
             mods = _parse_modifiers(m.group(2)[1:])
             if mods is None:
                 return Parsed(core="", ignored_reason=f"不支持的修饰符: {line}")
-            p.is_important = mods.is_important
-            p.query_types = mods.query_types
-            p.source_ip_cidrs = mods.source_ip_cidrs
+            _copy_modifiers(mods, p)
             rule = m.group(1)
     elif "$" in rule:
         mods = _parse_modifiers(rule.split("$", 1)[1])
         if mods is None:
             return Parsed(core="", ignored_reason=f"不支持的修饰符: {line}")
-        p.is_important = mods.is_important
-        p.query_types = mods.query_types
-        p.source_ip_cidrs = mods.source_ip_cidrs
+        _copy_modifiers(mods, p)
         rule = rule.split("$", 1)[0]
 
     if rule.startswith("@@"):
@@ -342,12 +380,31 @@ def _dedupe_subdomains(domains: set[str]) -> set[str]:
     return kept
 
 
+def _rule_signature(p: Parsed) -> tuple:
+    """$badfilter 的匹配键：除 badfilter 外的全部生效条件。
+
+    AdGuard 语义是「文本相同的基础规则被禁用」，即 pattern 与其余修饰符
+    都一致、只是多了 badfilter。这里用解析后的结构化字段做键，比原始文本
+    更稳（顺序/空白差异不影响）。
+    """
+    return (
+        p.is_exclude, p.is_suffix, p.is_start, p.has_end, p.is_substring,
+        p.suffix_loose, p.is_regexp, p.is_important, p.is_ip,
+        p.core,
+        tuple(sorted(p.query_types)), tuple(sorted(p.query_types_exclude)),
+        tuple(sorted(p.ports)), tuple(sorted(p.source_ip_cidrs)),
+        tuple(sorted(p.deny_allow)),
+    )
+
+
 def _mod_key(p: Parsed):
     qt = tuple(sorted(p.query_types))
+    qtx = tuple(sorted(p.query_types_exclude))
     ports = tuple(sorted(p.ports))
     src = tuple(sorted(p.source_ip_cidrs))
-    if qt or ports or src:
-        return (qt, ports, src)
+    den = tuple(sorted(p.deny_allow))
+    if qt or qtx or ports or src or den:
+        return (qt, qtx, ports, src, den)
     return None
 
 
@@ -375,20 +432,45 @@ def build_rules(parsed_list: list[Parsed]) -> list[dict]:
         p = values[0]
         if p.query_types:
             r["query_type"] = sorted(p.query_types)
+        if p.query_types_exclude:
+            # sing-box 没有 query_type 取反字段，用 logical and + invert 表达
+            # 「查询类型不属于这些」。包成单层逻辑规则，与域名部分 AND 相连。
+            r = {"type": "logical", "mode": "and", "rules": [
+                {"invert": True, "query_type": sorted(p.query_types_exclude)},
+                r,
+            ]}
         if p.ports:
             r["port"] = sorted(p.ports)
         if p.source_ip_cidrs:
             r["source_ip_cidr"] = sorted(p.source_ip_cidrs)
+        if p.deny_allow:
+            # $denyallow=a.com|b.com：主规则命中，但这些域名放行。
+            # 等价于「主规则 AND NOT (a.com 或 *.a.com ...)」。
+            r = {"type": "logical", "mode": "and", "rules": [
+                {"invert": True, "domain_suffix": sorted(p.deny_allow)},
+                r,
+            ]}
         return r
 
     def merged(gs: list[dict]) -> list[dict]:
-        """按 mod_key 合并；不同修饰符桶必须拆成多条（同条 default rule 内多字段是 AND）。"""
-        by_key: dict = {}
+        """按 mod_key 合并；不同修饰符桶必须拆成多条（同条 default rule 内多字段是 AND）。
+
+        含 denyallow / dnstype 取反的组会产出逻辑规则（含 "type": "logical"），
+        无法按字段名合并，直接原样保留并单独成条。
+        """
+        plain_fields: dict = {}
+        logical_rules: list[dict] = []
         for g in gs:
             key = _mod_key(g["values"][0])
-            for field_name, values in make_rule(g).items():
-                by_key.setdefault(key, {}).setdefault(field_name, []).extend(values)
-        return [{k: sorted(set(v)) for k, v in d.items()} for d in by_key.values()]
+            rule = make_rule(g)
+            if rule.get("type") == "logical":
+                logical_rules.append(rule)
+                continue
+            for field_name, values in rule.items():
+                plain_fields.setdefault(key, {}).setdefault(field_name, []).extend(values)
+        out = [{k: sorted(set(v)) for k, v in d.items()}
+               for d in plain_fields.values()]
+        return out + logical_rules
 
     def wrap_or(gs: list[dict]) -> dict:
         """多条规则包 logical or（rules 间是 OR）。"""
@@ -429,6 +511,7 @@ def convert(text: str, *, source: str = "auto") -> dict:
         raise ValueError(f"未知 source: {source}")
     parsed: list[Parsed] = []
     ignored: list[str] = []
+    badfilter_keys: set = set()
     for raw in text.splitlines():
         p = parse_line(raw)
         if p is None:
@@ -436,9 +519,17 @@ def convert(text: str, *, source: str = "auto") -> dict:
         if p.ignored_reason:
             ignored.append(p.ignored_reason)
             continue
+        if p.is_badfilter:
+            # $badfilter 禁用"去掉 badfilter 后文本相同"的基础规则
+            badfilter_keys.add(_rule_signature(p))
+            continue
         if source != "auto":
             p.source = source
         parsed.append(p)
+    if badfilter_keys:
+        kept = [p for p in parsed if _rule_signature(p) not in badfilter_keys]
+        if len(kept) != len(parsed):
+            parsed = kept
     rules = build_rules(parsed)
     return {"version": 3, "rules": rules, "_ignored": ignored}
 

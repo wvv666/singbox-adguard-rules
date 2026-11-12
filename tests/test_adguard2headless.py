@@ -677,6 +677,77 @@ class TestDomainNameValidity(unittest.TestCase):
             "coordinator-production-28516768.us-east-1.elb.amazonaws.com"]})
 
 
+class TestExtendedModifiers(unittest.TestCase):
+    """AdGuard 文档中 $denyallow / $dnstype 取反 / $badfilter 的映射。"""
+
+    def test_denyallow_builds_and_invert(self):
+        rule = single_rule("||example.org^$denyallow=sub.example.org\n")
+        self.assertEqual(rule, {
+            "type": "logical", "mode": "and",
+            "rules": [
+                {"invert": True, "domain_suffix": ["sub.example.org"]},
+                {"domain_suffix": ["example.org"]},
+            ],
+        })
+        self.assertTrue(matches(rule, "example.org"))
+        self.assertTrue(matches(rule, "a.example.org"))
+        self.assertFalse(matches(rule, "sub.example.org"))      # denyallow 放行
+        self.assertFalse(matches(rule, "x.sub.example.org"))    # 含子域
+        self.assertFalse(matches(rule, "other.net"))
+
+    def test_denyallow_multiple(self):
+        rule = single_rule("||example.org^$denyallow=a.example.org|b.example.org\n")
+        inner = rule["rules"][0]
+        self.assertEqual(inner["domain_suffix"],
+                         ["a.example.org", "b.example.org"])
+        self.assertFalse(matches(rule, "a.example.org"))
+        self.assertFalse(matches(rule, "b.example.org"))
+        self.assertTrue(matches(rule, "c.example.org"))
+
+    def test_dnstype_negation(self):
+        rule = single_rule("||t.example^$dnstype=~A|~CNAME\n")
+        self.assertEqual(rule, {
+            "type": "logical", "mode": "and",
+            "rules": [
+                {"invert": True, "query_type": ["A", "CNAME"]},
+                {"domain_suffix": ["t.example"]},
+            ],
+        })
+        self.assertFalse(matches(rule, "t.example", query_type="A"))
+        self.assertFalse(matches(rule, "t.example", query_type="CNAME"))
+        self.assertTrue(matches(rule, "t.example", query_type="AAAA"))
+        self.assertTrue(matches(rule, "t.example", query_type="MX"))
+
+    def test_dnstype_mixed_follows_spec(self):
+        # 规范：$dnstype=~value1|value2 等效于 $dnstype=value2
+        rule = single_rule("||t.example^$dnstype=~A|AAAA\n")
+        self.assertEqual(rule, {"domain_suffix": ["t.example"],
+                                "query_type": ["AAAA"]})
+        self.assertFalse(matches(rule, "t.example", query_type="A"))
+        self.assertTrue(matches(rule, "t.example", query_type="AAAA"))
+
+    def test_badfilter_removes_matching_rule(self):
+        # $badfilter 禁用去掉 badfilter 后文本相同的基础规则
+        result = conv.convert(
+            "||ads.example^\n"
+            "||keep.example^\n"
+            "||ads.example^$badfilter\n")
+        self.assertEqual(result["rules"], [{"domain_suffix": ["keep.example"]}])
+
+    def test_badfilter_with_other_modifiers(self):
+        result = conv.convert(
+            "||t.example^$dnstype=A\n"
+            "||t.example^$dnstype=A,badfilter\n")
+        self.assertEqual(result["rules"], [])
+
+    def test_badfilter_does_not_match_different_rule(self):
+        # 锚点不同 → 文本不同 → 不应误删
+        result = conv.convert(
+            "||ads.example^\n"
+            "||ads.example$badfilter\n")
+        self.assertEqual(result["rules"], [{"domain_suffix": ["ads.example"]}])
+
+
 class TestOutputShape(unittest.TestCase):
     """输出必须能被 sing-box rule-set compile 接受（字段名/结构合法）。"""
 
