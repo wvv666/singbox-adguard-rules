@@ -89,6 +89,31 @@ class TestStats(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 urs.update_readme(readme, out)
 
+    def test_collect_source_entries(self):
+        with tempfile.TemporaryDirectory() as td:
+            sources = Path(td) / "sources"
+            (sources / "adguard").mkdir(parents=True)
+            (sources / "adguard" / "a.txt").write_text(
+                "||x.example^\n||y.example^\n@@||ok.x.example^\n", encoding="utf-8")
+            config = Path(td) / "sources.json"
+            config.write_text(json.dumps([
+                {"name": "a", "type": "adguard", "url": "https://example.com/a.txt"},
+                {"name": "missing", "type": "adguard", "url": "https://example.com/m.txt"},
+            ]), encoding="utf-8")
+            entries = urs.collect_source_entries(sources, config)
+            # 顺序由 config 决定；缺失文件跳过
+            self.assertEqual([name for name, _ in entries], ["a"])
+            self.assertEqual(entries[0][1], 3)  # x + y + 白名单 ok.x
+
+    def test_stats_block_with_sources(self):
+        with tempfile.TemporaryDirectory() as td:
+            _, out = make_fixture(td)
+            block = urs.build_stats_block(
+                out, [("short", 12), ("much-longer-source", 3456)])
+            self.assertIn("📦 各规则源（规则数）:", block)
+            self.assertIn("short", block)
+            self.assertIn("3,456 条", block)
+
     def test_parse_merged_count(self):
         self.assertEqual(
             urs.parse_merged_count("adguard  257,793 条  （全部上游源合并去重）"),
