@@ -11,7 +11,7 @@
   },
   {
     "name": "anti-ad-adguard",
-    "url": "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-adguard.txt",
+    "url": "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-easylist.txt",
     "type": "adguard"
   },
   {
