@@ -16,13 +16,8 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 
 ```
 📈 合并规则集（去重后）:
-   combined 288,113 条  （AdGuard 全量合并去重）
-   adguard  288,113 条  （仅 AdGuard 语法）
-
-📦 单源规则集:
-   217heidai  241,897 条   GOODBYEADS-dns  116,951 条
-   anti-ad    96,518 条   qq5460168       15,275 条
-   GOODBYEADS-allow    93 条（白名单例外）
+   combined 288,113 条  （与 adguard 相同，兼容旧订阅）
+   adguard  288,113 条  （全部上游源合并去重，推荐）
 ```
 
 ## 📥 规则订阅
@@ -34,21 +29,7 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 | 规则集 | 说明 | 📥 GitHub 直链 | 🚀 国内加速 |
 | :---- | :---- | :---- | :---- |
 | `combined` | AdGuard 源全量合并去重（与 `adguard` 内容相同，保留以兼容旧订阅） | [combined.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/combined/combined.srs) | [combined.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/combined/combined.srs) |
-| `adguard` | 仅 AdGuard 语法源合并去重 | [adguard.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) | [adguard.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) |
-
-</details>
-
-<details>
-<summary><b>📦 单源规则集</b></summary>
-<br>
-
-| 规则集 | 说明 | 📥 GitHub 直链 | 🚀 国内加速 |
-| :---- | :---- | :---- | :---- |
-| `217heidai-adblockdns` | 汇总 16+ 上游的 AdGuard DNS 去广告规则 | [.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/217heidai-adblockdns.srs) | [.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/217heidai-adblockdns.srs) |
-| `GOODBYEADS-dns` | DNS 级广告拦截 | [.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/GOODBYEADS-dns.srs) | [.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/GOODBYEADS-dns.srs) |
-| `anti-ad-adguard` | 国内广告域名拦截 | [.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/anti-ad-adguard.srs) | [.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/anti-ad-adguard.srs) |
-| `qq5460168-dns` | 多格式去广告 | [.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/qq5460168-dns.srs) | [.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/qq5460168-dns.srs) |
-| `GOODBYEADS-allow` | 白名单例外（放行列表） | [.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/GOODBYEADS-allow.srs) | [.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/converted/adguard/GOODBYEADS-allow.srs) |
+| `adguard` | 全部上游源合并去重（推荐） | [adguard.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) | [adguard.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) |
 
 </details>
 

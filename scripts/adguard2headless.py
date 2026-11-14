@@ -709,10 +709,9 @@ def convert_all(adguard_sources: list[tuple[str, str]],
 def write_output_tree(out_dir: Path, result: dict,
                       adguard_sources: list[tuple[str, str]],
                       hosts_sources: list[tuple[str, str]]) -> None:
-    """写入完整产物目录树：
+    """写入产物目录树：
 
-    sources/    上游原始文件（按语法分类）
-    converted/  每个源的转换产物 json（srs 由 CI 的 sing-box compile 补）
+    sources/    上游原始文件（按语法分类，本地调试用；不入库）
     merged/     合并去重产物（原始文件 + json）
     """
     out = out_dir
@@ -724,15 +723,7 @@ def write_output_tree(out_dir: Path, result: dict,
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(text, encoding="utf-8")
             print(f"written: {p}", file=sys.stderr)
-    # ② converted/：每个源的转换产物（json；srs 由 CI 的 sing-box compile 补）
-    for kind in ("adguard", "hosts"):
-        for name, rules in result["per_source"][kind].items():
-            p = out / "converted" / kind / f"{Path(name).stem}.json"
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps({"version": 3, "rules": rules},
-                                    indent=2, ensure_ascii=False), encoding="utf-8")
-            print(f"written: {p}", file=sys.stderr)
-    # ③ merged/：合并去重产物（原始文件 + json；srs 由 CI 补）
+    # ② merged/：合并去重产物（原始文件 + json；srs 由 CI 补）
     for name, m in result["merged"].items():
         d = out / "merged" / name
         d.mkdir(parents=True, exist_ok=True)
@@ -745,7 +736,7 @@ def write_output_tree(out_dir: Path, result: dict,
 
 def _check_name_conflicts(adguard_sources: list[tuple[str, str]],
                           hosts_sources: list[tuple[str, str]]) -> list[str]:
-    """同类输入内 stem 重复 → converted/ 产物互相覆盖，需报错。"""
+    """同类输入内 stem 重复 → sources/ 副本互相覆盖，需报错。"""
     errors: list[str] = []
     for kind, srcs in (("adguard", adguard_sources), ("hosts", hosts_sources)):
         stems = [Path(n).stem for n, _ in srcs]
@@ -762,7 +753,7 @@ def main() -> None:
     ap.add_argument("--hosts", type=Path, action="append", default=[], metavar="FILE",
                     help="hosts 文件（可重复指定多个）")
     ap.add_argument("-o", "--output-dir", type=Path, default=None,
-                    help="输出目录：sources/ 原始文件、converted/ 单源转换、merged/ 合并去重")
+                    help="输出目录：sources/ 原始文件、merged/ 合并去重")
     args = ap.parse_args()
     if not args.adguard and not args.hosts:
         ap.error("至少需要一个 --adguard 或 --hosts 输入文件")
@@ -770,7 +761,7 @@ def main() -> None:
     hosts_sources = [(p.name, p.read_text(encoding="utf-8-sig")) for p in args.hosts]
     errors = _check_name_conflicts(adguard_sources, hosts_sources)
     if errors:
-        ap.error(f"同类输入文件重名（converted/ 产物会互相覆盖）: {errors}（请改名）")
+        ap.error(f"同类输入文件重名（sources/ 副本会互相覆盖）: {errors}（请改名）")
     result = convert_all(adguard_sources, hosts_sources)
     for reason in result["_ignored"]:
         print(f"# 丢弃: {reason}", file=sys.stderr)

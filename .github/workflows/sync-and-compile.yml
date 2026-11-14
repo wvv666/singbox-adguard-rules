@@ -122,15 +122,13 @@ jobs:
           for f in work/sources/hosts/*.hosts; do args+=(--hosts "$f"); done
           python3 scripts/adguard2headless.py "${args[@]}" -o work/out
 
-      - name: Compile .srs (all converted + merged JSON)
+      - name: Compile .srs (merged JSON)
         run: |
           set -euo pipefail
           shopt -s nullglob
           SUCCESS=0
           FAIL=0
-          for f in work/out/converted/adguard/*.json \
-                   work/out/converted/hosts/*.json \
-                   work/out/merged/*/*.json; do
+          for f in work/out/merged/*/*.json; do
             out="${f%.json}.srs"
             echo "⚙️  Compiling $f -> $out"
             if sing-box rule-set compile --output "$out" "$f"; then
@@ -169,7 +167,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Rule-set | Size |" >> $GITHUB_STEP_SUMMARY
           echo "|------|------|" >> $GITHUB_STEP_SUMMARY
-          for f in work/out/merged/*/*.srs work/out/converted/*/*.srs; do
+          for f in work/out/merged/*/*.srs; do
             name=${f#work/out/}
             size=$(du -h "$f" | cut -f1)
             echo "| \`${name}\` | ${size} |" >> $GITHUB_STEP_SUMMARY

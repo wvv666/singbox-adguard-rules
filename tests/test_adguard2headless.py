@@ -611,7 +611,7 @@ class TestFullTree(unittest.TestCase):
         self.assertIn("0.0.0.0 host.example.com", merged["combined"]["text"])
 
     def test_write_output_tree(self):
-        # CLI 目录树集成：sources/converted/merged 全部生成（rule-sets/ 已按用户要求移除）
+        # CLI 目录树集成：sources/merged 生成；单源规则集已按用户要求移除
         with tempfile.TemporaryDirectory() as td:
             out = Path(td) / "out"
             result = conv.convert_all(
@@ -623,8 +623,6 @@ class TestFullTree(unittest.TestCase):
                 hosts_sources=[("h.hosts", "0.0.0.0 host.example.com\n")])
             files = sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())
             self.assertEqual(files, [
-                "converted/adguard/a-rules.json",
-                "converted/hosts/h.json",
                 "merged/adguard/adguard.json",
                 "merged/adguard/adguard.txt",
                 "merged/combined/combined.json",
@@ -650,7 +648,7 @@ class TestFullTree(unittest.TestCase):
             ["adguard: ['a']"])
         self.assertEqual(
             conv._check_name_conflicts([("a.txt", "x")], [("a.hosts", "y")]),
-            [])  # 跨 kind 同名不冲突（converted/ 子目录分离）
+            [])  # 跨 kind 同名不冲突（sources/ 子目录分离）
 
     def test_reserved_name_no_error(self):
         # 输入叫 hosts.txt：目录分离不报错（rule-sets 已移除，无引用合并问题）
