@@ -5,6 +5,7 @@
 不得改变任何域名的拦截结果，也不得误删白名单/反向规则里的域名。
 """
 
+import copy
 import importlib.util
 import sys
 import unittest
@@ -130,6 +131,19 @@ class TestPruneRedundantDomains(unittest.TestCase):
         ])
         for d in domains:
             self.assertEqual(_blocked(before, d), _blocked(after, d), d)
+
+    def test_prune_is_idempotent(self):
+        # 剪枝结果必须稳定：对已剪枝列表再剪一次不得再变化。
+        rules = [
+            {"domain_suffix": ["example.com"]},
+            {"domain_suffix": ["ads.example.com"]},
+            {"domain": ["x.example.com", "keep.net"]},
+            {"query_type": ["A"], "domain_suffix": ["other.net"]},
+            {"query_type": ["A"], "domain": ["y.other.net"]},
+        ]
+        once = conv.prune_redundant_domains(copy.deepcopy(rules))
+        twice = conv.prune_redundant_domains(copy.deepcopy(once))
+        self.assertEqual(once, twice)
 
     def test_non_domain_rules_untouched(self):
         rules = [{"ip_cidr": ["1.2.3.4/32"]}, {"domain_regex": [r"^a\.b$"]}]

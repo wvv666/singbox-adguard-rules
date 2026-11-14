@@ -31,7 +31,6 @@ README_TEMPLATE = """# test
 📦 单源规则集:
    217heidai  999 条   GOODBYEADS-dns  999 条
    anti-ad    999 条   qq5460168       999 条
-   10007-adb  999 条   10007-all       999 条
    GOODBYEADS-allow   999 条（白名单例外）
 ```
 
@@ -63,8 +62,6 @@ def make_fixture(td: str) -> tuple[Path, Path]:
                  [{"ip_cidr": ["1.2.3.4"], "port": [3000]}])
     make_product(out, "converted/adguard/anti-ad-adguard.json", [{"domain": ["y.com"]}])
     make_product(out, "converted/adguard/qq5460168-dns.json", [{"domain": ["z.com"]}])
-    make_product(out, "converted/adguard/10007-adb.json", [{"domain": ["w.com"]}])
-    make_product(out, "converted/hosts/10007-all.json", [{"domain": ["h2.com"]}])
     make_product(out, "converted/adguard/GOODBYEADS-allow.json",
                  [{"domain": ["allow1.com", "__singbox_never_match__"]}])
     readme = Path(td) / "README.md"
@@ -102,6 +99,17 @@ class TestStats(unittest.TestCase):
             out = Path(td) / "out"
             with self.assertRaises(RuntimeError):
                 urs.update_readme(readme, out)
+
+    def test_update_readme_without_hosts_product(self):
+        # 无 hosts 类型源时不生成 merged/hosts，统计块应省略 hosts 行
+        with tempfile.TemporaryDirectory() as td:
+            readme, out = make_fixture(td)
+            (out / "merged" / "hosts" / "hosts.json").unlink()
+            new_text = urs.update_readme(readme, out)
+            self.assertIn("combined 3 条", new_text)
+            self.assertIn("（AdGuard 全量合并去重）", new_text)
+            self.assertNotIn("hosts    1 条", new_text)
+            self.assertNotIn("（仅 hosts 格式）", new_text)
 
     def test_parse_combined_count(self):
         self.assertEqual(urs.parse_combined_count("combined 257,793 条  （AdGuard）"), 257793)

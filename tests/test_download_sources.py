@@ -38,7 +38,9 @@ class TestPollutionDetection(unittest.TestCase):
     def test_url_whitelist(self):
         # https + 主机白名单校验（防 file:// 与任意主机）
         self.assertTrue(ds._check_url("https://raw.githubusercontent.com/a/b/c.txt"))
-        self.assertTrue(ds._check_url("https://lingeringsound.github.io/10007/adb.txt"))
+        # 10007 源已移除，原来的 gh-pages 主机不再放行
+        with self.assertRaises(ValueError):
+            ds._check_url("https://lingeringsound.github.io/10007/adb.txt")
         with self.assertRaises(ValueError):
             ds._check_url("file:///etc/passwd")
         with self.assertRaises(ValueError):

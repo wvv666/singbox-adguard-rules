@@ -492,6 +492,10 @@ class TestThreeProducts(unittest.TestCase):
 class TestFullTree(unittest.TestCase):
     """完整产物树：单源转换 + 合并去重（原始行去重）。"""
 
+    @staticmethod
+    def _blocked(rules, domain):
+        return any(matches(r, domain) for r in rules)
+
     def test_convert_all(self):
         result = conv.convert_all(
             adguard_sources=[
@@ -523,6 +527,67 @@ class TestFullTree(unittest.TestCase):
         result = conv.convert_all(adguard_sources=[], hosts_sources=[("h.hosts", "0.0.0.0 a.example\n")])
         self.assertEqual(result["per_source"]["adguard"], {})
         self.assertEqual(set(result["merged"]), {"hosts", "combined"})
+
+    def test_merged_whitelist_applies_globally(self):
+        # 源 A 拦截 tracker.example，源 B 单独放行 sub.tracker.example。
+        # 合并后整份文本重新转换，@@ 例外是全局 AND NOT：放行生效，
+        # 但同一后缀下未被放行的兄弟域仍需拦截。
+        result = conv.convert_all(
+            adguard_sources=[
+                ("a.txt", "||tracker.example^\n"),
+                ("b.txt", "@@||sub.tracker.example^\n"),
+            ],
+            hosts_sources=[])
+        union = [r for rules in result["per_source"]["adguard"].values() for r in rules]
+        merged = result["merged"]["adguard"]["rules"]
+        self.assertTrue(self._blocked(union, "sub.tracker.example"))
+        self.assertFalse(self._blocked(merged, "sub.tracker.example"))
+        self.assertTrue(self._blocked(merged, "other.tracker.example"))
+
+    def test_merged_blocks_are_subset_of_per_source_union(self):
+        # 合并语义的核心不变式：merged ⊆ union(逐源结果)。
+        # 跨源白名单只能减少拦截，绝不能让合并产物多拦截。
+        sources = [
+            ("a.txt", "||tracker.example^\n||ads.example^\n"),
+            ("b.txt", "@@||sub.tracker.example^\n||banner.example^\n"),
+            ("c.txt", "||cdn.example^\n@@||api.cdn.example^\n"),
+        ]
+        result = conv.convert_all(sources, [])
+        union = [r for rules in result["per_source"]["adguard"].values() for r in rules]
+        merged = result["merged"]["adguard"]["rules"]
+        probes = ["tracker.example", "sub.tracker.example", "ads.example",
+                  "banner.example", "cdn.example", "api.cdn.example",
+                  "other.cdn.example", "unrelated.net"]
+        for d in probes:
+            if self._blocked(merged, d):
+                self.assertTrue(self._blocked(union, d),
+                                f"merged 拦截了 union 未拦截的 {d}")
+
+    def test_merged_important_overrides_cross_source_whitelist(self):
+        # $important 优先级高于普通 @@ 例外，跨源合并后依然成立：
+        # 源 A 的 important 拦截不被源 B 的普通白名单抵消。
+        result = conv.convert_all(
+            adguard_sources=[
+                ("a.txt", "||track.example^$important\n"),
+                ("b.txt", "@@||track.example^\n"),
+            ],
+            hosts_sources=[])
+        merged = result["merged"]["adguard"]["rules"]
+        self.assertTrue(self._blocked(merged, "track.example"))
+        self.assertTrue(self._blocked(merged, "sub.track.example"))
+
+    def test_merged_badfilter_applies_globally(self):
+        # 合并成一份列表后，$badfilter 会禁用其他源里签名相同的基础规则。
+        # 这属于「一份列表」的官方语义，结果只会减少拦截（仍是 union 子集）。
+        result = conv.convert_all(
+            adguard_sources=[
+                ("a.txt", "||ads.example^\n||keep.example^\n"),
+                ("b.txt", "||ads.example^$badfilter\n"),
+            ],
+            hosts_sources=[])
+        merged = result["merged"]["adguard"]["rules"]
+        self.assertFalse(self._blocked(merged, "ads.example"))
+        self.assertTrue(self._blocked(merged, "keep.example"))
 
     def test_merged_three_categories(self):
         # 用户确认的设计：合并去重产物恰分三类（hosts / adguard / 两者一起）

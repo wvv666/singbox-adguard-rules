@@ -22,8 +22,6 @@ SINGLE_SOURCES = [
     ("GOODBYEADS-dns", "adguard", "GOODBYEADS-dns"),
     ("anti-ad", "adguard", "anti-ad-adguard"),
     ("qq5460168", "adguard", "qq5460168-dns"),
-    ("10007-adb", "adguard", "10007-adb"),
-    ("10007-all", "hosts", "10007-all"),
     ("GOODBYEADS-allow", "adguard", "GOODBYEADS-allow"),
 ]
 
@@ -50,8 +48,9 @@ def load_count(path: Path) -> int:
 
 
 def build_stats_block(out: Path) -> str:
-    def merged(name: str) -> int:
-        return load_count(out / "merged" / name / f"{name}.json")
+    def merged(name: str) -> int | None:
+        p = out / "merged" / name / f"{name}.json"
+        return load_count(p) if p.exists() else None
 
     c, a, h = merged("combined"), merged("adguard"), merged("hosts")
     singles = [(label, load_count(out / "converted" / kind / f"{stem}.json"))
@@ -61,19 +60,25 @@ def build_stats_block(out: Path) -> str:
     def fmt(n: int) -> str:
         return f"{n:,}"
 
-    return (
-        "📈 合并规则集（去重后）:\n"
+    # hosts 产物只在存在 hosts 类型源时生成；无 hosts 源时 combined 即 AdGuard 合并结果
+    merged_lines = (
         f"   combined {fmt(c)} 条  （AdGuard + hosts 全量）\n"
         f"   adguard  {fmt(a)} 条  （仅 AdGuard 语法）\n"
         f"   hosts    {fmt(h)} 条  （仅 hosts 格式）\n"
+        if h is not None else
+        f"   combined {fmt(c)} 条  （AdGuard 全量合并去重）\n"
+        f"   adguard  {fmt(a)} 条  （仅 AdGuard 语法）\n"
+    )
+
+    return (
+        "📈 合并规则集（去重后）:\n"
+        + merged_lines +
         "\n"
         "📦 单源规则集:\n"
         f"   217heidai  {fmt(by_name['217heidai'])} 条   "
         f"GOODBYEADS-dns  {fmt(by_name['GOODBYEADS-dns'])} 条\n"
         f"   anti-ad    {fmt(by_name['anti-ad'])} 条   "
         f"qq5460168       {fmt(by_name['qq5460168'])} 条\n"
-        f"   10007-adb  {fmt(by_name['10007-adb'])} 条   "
-        f"10007-all       {fmt(by_name['10007-all'])} 条\n"
         f"   GOODBYEADS-allow    {fmt(by_name['GOODBYEADS-allow'])} 条（白名单例外）"
     )
 

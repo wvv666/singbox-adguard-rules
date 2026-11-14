@@ -38,11 +38,10 @@ def is_polluted(text: str) -> bool:
 MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024  # 64MB 响应大小上限
 
 # 允许的源主机白名单（防 file:// 等非 https 或任意主机拉取）。
-# 注意：禁重定向 + HTML 污染检测，仅 raw.githubusercontent.com 与
-# lingeringsound.github.io 这类纯文本直链可用（github.com 网页会触发污染检测）。
+# 注意：禁重定向 + HTML 污染检测，仅 raw.githubusercontent.com 这类
+# 纯文本直链可用（github.com 网页会触发污染检测）。
 ALLOWED_HOSTS = {
     "raw.githubusercontent.com",
-    "lingeringsound.github.io",
 }
 
 
