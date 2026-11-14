@@ -16,8 +16,7 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 
 ```
 📈 合并规则集（去重后）:
-   combined 288,113 条  （与 adguard 相同，兼容旧订阅）
-   adguard  288,113 条  （全部上游源合并去重，推荐）
+   adguard  288,113 条  （全部上游源合并去重）
 ```
 
 ## 📥 规则订阅
@@ -28,8 +27,9 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 
 | 规则集 | 说明 | 📥 GitHub 直链 | 🚀 国内加速 |
 | :---- | :---- | :---- | :---- |
-| `combined` | AdGuard 源全量合并去重（与 `adguard` 内容相同，保留以兼容旧订阅） | [combined.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/combined/combined.srs) | [combined.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/combined/combined.srs) |
 | `adguard` | 全部上游源合并去重（推荐） | [adguard.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) | [adguard.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) |
+
+合并去重后的 AdGuard 原生文本：[adguard.txt](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.txt)
 
 </details>
 
@@ -55,6 +55,6 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 
 - **仓库体积策略**：只提交订阅产物 `.srs` 与合并后的可读规则 `merged/**/*.txt`；作为编译输入的中间 JSON 和上游原件不入库（早期历史提交中仍保留）。
 - **冗余剪枝**：合并时会删掉「已被同条件 `domain_suffix` 覆盖」的精确域名（如 `a.example.com` 已被 `example.com` 覆盖），拦截范围不变但产物更小。
-- **自动防退化**：CI 校验 sing-box 二进制 SHA-256（读取 Release 资产 digest）；若 combined 规则数骤降超过 20%，判定上游源异常并拒绝提交。
+- **自动防退化**：CI 校验 sing-box 二进制 SHA-256（读取 Release 资产 digest）；若合并规则数骤降超过 20%，判定上游源异常并拒绝提交。
 
 如果觉得有用，请点个 ⭐ 支持一下！

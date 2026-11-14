@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import ipaddress
 import json
 import re
@@ -534,34 +533,6 @@ def convert(text: str, *, source: str = "auto") -> dict:
     return {"version": 3, "rules": rules, "_ignored": ignored}
 
 
-def convert_multi(adguard_texts: list[str], hosts_texts: list[str]) -> dict:
-    """三种产物：adguard / hosts / combined（合并，rules 数组间 OR）。
-
-    注：combined 为两份独立编译产物的 OR 拼接，@@ 排除规则按各自文件内
-    AND 分桶，跨文件的排除/important 互不联动——对广告拦截场景无影响。
-    """
-    adguard_rules: list[dict] = []
-    hosts_rules: list[dict] = []
-    ignored: list[str] = []
-    for text in adguard_texts:
-        r = convert(text, source="adguard")
-        adguard_rules.extend(r["rules"])
-        ignored.extend(r["_ignored"])
-    for text in hosts_texts:
-        r = convert(text, source="hosts")
-        hosts_rules.extend(r["rules"])
-        ignored.extend(r["_ignored"])
-    products: dict = {}
-    if adguard_rules:
-        products["adguard"] = {"version": 3, "rules": adguard_rules}
-    if hosts_rules:
-        products["hosts"] = {"version": 3, "rules": hosts_rules}
-    combined = adguard_rules + hosts_rules
-    if combined:
-        products["combined"] = {"version": 3, "rules": combined}
-    return {"products": products, "_ignored": ignored}
-
-
 _DOMAIN_FIELDS = ("domain", "domain_suffix", "domain_regex")
 
 
@@ -616,7 +587,7 @@ def prune_redundant_domains(rules: list[dict]) -> list[dict]:
     """剪掉已被 domain_suffix 完全覆盖的精确 domain 条目（语义等价）。
 
     domain_suffix "x.com" 同时匹配 x.com 及其所有子域，因此 domain 里的
-    "x.com"、"a.x.com" 都是冗余的。典型收益：combined 产物中 hosts 源的
+    "x.com"、"a.x.com" 都是冗余的。典型收益：合并产物中 hosts 源的
     精确域名被 adguard 源的宽泛后缀覆盖，可整体删除而不改变拦截范围。
 
     安全边界：
@@ -662,12 +633,12 @@ def _merge_dedupe_texts(texts: list[str]) -> str:
 
 def convert_all(adguard_sources: list[tuple[str, str]],
                 hosts_sources: list[tuple[str, str]]) -> dict:
-    """完整产物：每个源单独转换 + 合并去重（原始行去重）。
+    """完整产物：每个源单独转换（内部审计用）+ 单一合并去重产物。
 
     adguard_sources / hosts_sources: [(name, text), ...]
     返回:
       per_source: {"adguard": {name: rules}, "hosts": {name: rules}}
-      merged:     {"adguard"|"hosts"|"combined": {"text": 合并去重原始行, "rules": ...}}
+      merged:     {"adguard": {"text": 合并去重原始 AdGuard 文本, "rules": ...}}
     """
     per_source: dict = {"adguard": {}, "hosts": {}}
     ignored: list[str] = []
@@ -681,28 +652,13 @@ def convert_all(adguard_sources: list[tuple[str, str]],
         ignored.extend(r["_ignored"])
 
     merged: dict = {}
-    if adguard_sources:
-        text = _merge_dedupe_texts([t for _, t in adguard_sources])
-        rules = convert(text, source="adguard")["rules"]
+    texts = [t for _, t in adguard_sources] + [t for _, t in hosts_sources]
+    if texts:
+        text = _merge_dedupe_texts(texts)
+        # auto：混合输入时逐行识别语法（hosts 行按精确域名处理）
+        rules = prune_redundant_domains(convert(text, source="auto")["rules"])
         if rules:  # 无有效规则则不生成空产物
             merged["adguard"] = {"text": text, "rules": rules}
-    if hosts_sources:
-        text = _merge_dedupe_texts([t for _, t in hosts_sources])
-        rules = convert(text, source="hosts")["rules"]
-        if rules:
-            merged["hosts"] = {"text": text, "rules": rules}
-    # 各合并产物先做自身剪枝（成本极低），再对 combined 的独立副本做跨产物剪枝
-    for m in merged.values():
-        m["rules"] = prune_redundant_domains(m["rules"])
-    if merged:
-        combined_text = _merge_dedupe_texts([m["text"] for m in merged.values()])
-        combined_rules: list[dict] = []
-        for m in merged.values():
-            combined_rules.extend(copy.deepcopy(m["rules"]))  # 副本：避免剪枝污染单产物
-        merged["combined"] = {
-            "text": combined_text,
-            "rules": prune_redundant_domains(combined_rules),
-        }
     return {"per_source": per_source, "merged": merged, "_ignored": ignored}
 
 

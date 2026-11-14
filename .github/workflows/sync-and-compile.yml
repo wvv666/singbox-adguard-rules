@@ -149,12 +149,17 @@ jobs:
       - name: Verify products non-empty
         run: |
           set -euo pipefail
-          combined="work/out/merged/combined/combined.json"
-          if [ ! -s "$combined" ]; then
+          merged="work/out/merged/adguard/adguard.json"
+          if [ ! -s "$merged" ]; then
             echo "::error::合并产物为空（可能上游规则退化），拒绝提交"
             exit 1
           fi
-          echo "combined.json: $(stat -c %s "$combined") bytes"
+          count=$(find work/out/merged -mindepth 1 -maxdepth 1 -type d | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "::error::只应发布一个合并产物，实际: $count"
+            exit 1
+          fi
+          echo "adguard.json: $(stat -c %s "$merged") bytes"
           echo "merged files:"
           ls -la work/out/merged/*/
 

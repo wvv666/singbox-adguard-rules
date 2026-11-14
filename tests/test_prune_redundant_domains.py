@@ -162,21 +162,14 @@ class TestConvertAllPruning(unittest.TestCase):
                 found.update(r.get("domain", []))
         return found
 
-    def test_combined_prunes_hosts_covered_by_adguard(self):
+    def test_merged_prunes_hosts_covered_by_adguard(self):
         adguard = "||example.com^\n||ads.example.com^\n"
         hosts = "0.0.0.0 sub.example.com\n0.0.0.0 standalone.net\n"
         result = conv.convert_all([("a.txt", adguard)], [("h.hosts", hosts)])
-        exact = self._exact_domains(result["merged"]["combined"]["rules"])
+        exact = self._exact_domains(result["merged"]["adguard"]["rules"])
         # sub.example.com 已被 adguard 的 domain_suffix example.com 覆盖 → 剪除
         self.assertNotIn("sub.example.com", exact)
         self.assertIn("standalone.net", exact)
-
-    def test_hosts_product_is_not_pruned_by_combined(self):
-        adguard = "||example.com^\n"
-        hosts = "0.0.0.0 sub.example.com\n"
-        result = conv.convert_all([("a.txt", adguard)], [("h.hosts", hosts)])
-        exact = self._exact_domains(result["merged"]["hosts"]["rules"])
-        self.assertIn("sub.example.com", exact)
 
 
 if __name__ == "__main__":

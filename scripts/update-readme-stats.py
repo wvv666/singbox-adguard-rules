@@ -43,27 +43,16 @@ def build_stats_block(out: Path) -> str:
         p = out / "merged" / name / f"{name}.json"
         return load_count(p) if p.exists() else None
 
-    c, a, h = merged("combined"), merged("adguard"), merged("hosts")
-
-    def fmt(n: int) -> str:
-        return f"{n:,}"
-
-    # hosts 产物只在存在 hosts 类型源时生成；无 hosts 源时 combined 即 AdGuard 合并结果
-    merged_lines = (
-        f"   combined {fmt(c)} 条  （AdGuard + hosts 全量）\n"
-        f"   adguard  {fmt(a)} 条  （仅 AdGuard 语法）\n"
-        f"   hosts    {fmt(h)} 条  （仅 hosts 格式）\n"
-        if h is not None else
-        f"   combined {fmt(c)} 条  （与 adguard 相同，兼容旧订阅）\n"
-        f"   adguard  {fmt(a)} 条  （全部上游源合并去重，推荐）\n"
-    )
-
-    return "📈 合并规则集（去重后）:\n" + merged_lines.rstrip("\n")
+    a = merged("adguard")
+    if a is None:
+        raise RuntimeError("缺少合并产物 work/out/merged/adguard/adguard.json")
+    return ("📈 合并规则集（去重后）:\n"
+            f"   adguard  {a:,} 条  （全部上游源合并去重）")
 
 
-def parse_combined_count(block: str) -> int | None:
-    """从统计块文本里取 combined 条数（用于上游退化守卫）。"""
-    m = re.search(r"combined\s+([\d,]+)\s*条", block)
+def parse_merged_count(block: str) -> int | None:
+    """从统计块文本里取 adguard 条数（用于上游退化守卫）。"""
+    m = re.search(r"adguard\s+([\d,]+)\s*条", block)
     return int(m.group(1).replace(",", "")) if m else None
 
 
@@ -77,11 +66,11 @@ def update_readme(readme: Path, out: Path,
         raise RuntimeError("README 统计块匹配失败（未找到 ## 📊 项目统计 后的 fenced 块）")
     block = build_stats_block(out)
     if max_drop_pct is not None:
-        old, new = parse_combined_count(m.group(2)), parse_combined_count(block)
+        old, new = parse_merged_count(m.group(2)), parse_merged_count(block)
         if old and new and new < old * (1 - max_drop_pct / 100):
             drop = (old - new) / old * 100
             raise RuntimeError(
-                f"combined 规则数骤降 {drop:.1f}%（{old:,} → {new:,}），"
+                f"合并规则数骤降 {drop:.1f}%（{old:,} → {new:,}），"
                 f"超过 {max_drop_pct:.0f}% 阈值：疑似上游源异常，拒绝提交")
     return text[:m.start(2)] + block + text[m.end(2):]
 
@@ -91,7 +80,7 @@ def main() -> None:
     ap.add_argument("--readme", type=Path, default=Path("README.md"))
     ap.add_argument("--out", type=Path, default=Path("work/out"))
     ap.add_argument("--max-drop-pct", type=float, default=None,
-                    help="combined 规则数相对上次允许的最大跌幅（%%），超出则失败退出")
+                    help="合并规则数相对上次允许的最大跌幅（%%），超出则失败退出")
     args = ap.parse_args()
     try:
         new_text = update_readme(args.readme, args.out, args.max_drop_pct)

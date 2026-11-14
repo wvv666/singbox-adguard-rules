@@ -24,9 +24,7 @@ README_TEMPLATE = """# test
 
 ```
 📈 合并规则集（去重后）:
-   combined 999 条  （AdGuard + hosts 全量）
-   adguard  999 条  （仅 AdGuard 语法）
-   hosts    999 条  （仅 hosts 格式）
+   adguard  999 条  （全部上游源合并去重）
 ```
 
 ## 📥 规则订阅
@@ -43,13 +41,11 @@ def make_product(out: Path, rel: str, rules: list):
 
 def make_fixture(td: str) -> tuple[Path, Path]:
     out = Path(td) / "out"
-    # merged 三个
-    make_product(out, "merged/combined/combined.json",
+    # 唯一合并产物：adguard（a + b + c，logical 递归）
+    make_product(out, "merged/adguard/adguard.json",
                  [{"domain": ["a.example.com", "b.example.com"]},
                   {"type": "logical", "mode": "and",
                    "rules": [{"domain_suffix": ["c.example.com"]}]}])
-    make_product(out, "merged/adguard/adguard.json", [{"domain": ["a.example.com"]}])
-    make_product(out, "merged/hosts/hosts.json", [{"domain": ["h.example.com"]}])
     # 单源产物即使存在也不应出现在统计中
     make_product(out, "converted/adguard/217heidai-adblockdns.json",
                  [{"domain_suffix": ["x1.com", "x2.com"]}])
@@ -72,9 +68,7 @@ class TestStats(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             readme, out = make_fixture(td)
             new_text = urs.update_readme(readme, out)
-            self.assertIn("combined 3 条", new_text)      # a + b + c（logical 递归）
-            self.assertIn("adguard  1 条", new_text)
-            self.assertIn("hosts    1 条", new_text)
+            self.assertIn("adguard  3 条", new_text)      # a + b + c（logical 递归）
             self.assertNotIn("单源规则集", new_text)
             self.assertNotIn("217heidai", new_text)
             self.assertIn("规则订阅", new_text)               # 正文不受影响
@@ -88,20 +82,18 @@ class TestStats(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 urs.update_readme(readme, out)
 
-    def test_update_readme_without_hosts_product(self):
-        # 无 hosts 类型源时不生成 merged/hosts，统计块应省略 hosts 行
+    def test_update_readme_missing_merged_product(self):
         with tempfile.TemporaryDirectory() as td:
             readme, out = make_fixture(td)
-            (out / "merged" / "hosts" / "hosts.json").unlink()
-            new_text = urs.update_readme(readme, out)
-            self.assertIn("combined 3 条", new_text)
-            self.assertIn("（全部上游源合并去重，推荐）", new_text)
-            self.assertNotIn("hosts    1 条", new_text)
-            self.assertNotIn("（仅 hosts 格式）", new_text)
+            (out / "merged" / "adguard" / "adguard.json").unlink()
+            with self.assertRaises(RuntimeError):
+                urs.update_readme(readme, out)
 
-    def test_parse_combined_count(self):
-        self.assertEqual(urs.parse_combined_count("combined 257,793 条  （AdGuard）"), 257793)
-        self.assertIsNone(urs.parse_combined_count("no numbers here"))
+    def test_parse_merged_count(self):
+        self.assertEqual(
+            urs.parse_merged_count("adguard  257,793 条  （全部上游源合并去重）"),
+            257793)
+        self.assertIsNone(urs.parse_merged_count("no numbers here"))
 
     def test_drop_guard_triggers_on_big_drop(self):
         with tempfile.TemporaryDirectory() as td:
@@ -113,17 +105,17 @@ class TestStats(unittest.TestCase):
     def test_drop_guard_allows_normal_drop(self):
         with tempfile.TemporaryDirectory() as td:
             readme, out = make_fixture(td)
-            text = readme.read_text(encoding="utf-8").replace("combined 999 条", "combined 4 条")
+            text = readme.read_text(encoding="utf-8").replace("adguard  999 条", "adguard  4 条")
             readme.write_text(text, encoding="utf-8")
-            # 4 → 3 只跌 25%? 不，4→3 是 25%，用 30% 阈值放行
+            # 4 → 3 是 25% 跌幅，用 30% 阈值放行
             new_text = urs.update_readme(readme, out, max_drop_pct=30)
-            self.assertIn("combined 3 条", new_text)
+            self.assertIn("adguard  3 条", new_text)
 
     def test_drop_guard_disabled_by_default(self):
         with tempfile.TemporaryDirectory() as td:
             readme, out = make_fixture(td)
             new_text = urs.update_readme(readme, out)
-            self.assertIn("combined 3 条", new_text)
+            self.assertIn("adguard  3 条", new_text)
 
 
 if __name__ == "__main__":

@@ -427,70 +427,15 @@ class TestClientModifier(unittest.TestCase):
         self.assertEqual(rule["rules"][1]["source_ip_cidr"], ["192.168.0.0/16"])
 
 
-class TestThreeProducts(unittest.TestCase):
-    """产物分三种：adguard / hosts / combined。"""
-
-    def _collect_defaults(self, rules):
-        defaults = []
-
-        def walk(r):
-            if r.get("type") == "logical":
-                for sub in r["rules"]:
-                    walk(sub)
-            else:
-                defaults.append(r)
-
-        for r in rules:
-            walk(r)
-        return defaults
-
-    def test_three_products(self):
-        result = conv.convert_multi(
-            adguard_texts=["||ads.example^\n|exact.example^\n"],
-            hosts_texts=["0.0.0.0 host.example.com\n127.0.0.1 loop.example.com\n"])
-        products = result["products"]
-        self.assertEqual(set(products), {"adguard", "hosts", "combined"})
-
-        # adguard 产物：只含 AdGuard 语法规则
-        adg = self._collect_defaults(products["adguard"]["rules"])
-        self.assertEqual(len(adg), 1)
-        self.assertEqual(adg[0]["domain_suffix"], ["ads.example"])
-        self.assertEqual(adg[0]["domain"], ["exact.example"])
-
-        # hosts 产物：只含 hosts 规则
-        h = self._collect_defaults(products["hosts"]["rules"])
-        self.assertEqual(h[0]["domain"], ["host.example.com", "loop.example.com"])
-
-        # combined 产物：两者合并（rules 数组 OR）
-        c = self._collect_defaults(products["combined"]["rules"])
-        domains = set()
-        suffixes = set()
-        for d in c:
-            domains.update(d.get("domain", []))
-            suffixes.update(d.get("domain_suffix", []))
-        self.assertEqual(domains, {"exact.example", "host.example.com", "loop.example.com"})
-        self.assertEqual(suffixes, {"ads.example"})
-
-    def test_single_source_only(self):
-        # 只有 hosts 输入：只生成 hosts + combined（不生成空 adguard）
-        result = conv.convert_multi(adguard_texts=[], hosts_texts=["0.0.0.0 a.example\n"])
-        self.assertEqual(set(result["products"]), {"hosts", "combined"})
-
+class TestSourceOverride(unittest.TestCase):
     def test_source_override(self):
         # 显式 source 覆盖 auto 识别：hosts 语法行归入 adguard 类
         result = conv.convert("0.0.0.0 a.example\n", source="adguard")
         self.assertEqual(result["rules"][0]["domain"], ["a.example"])
 
-    def test_empty_products_graceful(self):
-        # 全部输入被忽略时：products 为空，不抛异常
-        result = conv.convert_multi(
-            adguard_texts=["! 只有注释\n# 也是注释\n"],
-            hosts_texts=["# 空 hosts\n"])
-        self.assertEqual(result["products"], {})
-
 
 class TestFullTree(unittest.TestCase):
-    """完整产物树：单源转换 + 合并去重（原始行去重）。"""
+    """完整产物树：单源转换（内部） + 唯一合并产物。"""
 
     @staticmethod
     def _blocked(rules, domain):
@@ -505,19 +450,20 @@ class TestFullTree(unittest.TestCase):
             hosts_sources=[
                 ("h.hosts", "0.0.0.0 host.example.com\n0.0.0.0 dup.example\n"),
             ])
-        # 单源转换
+        # 单源转换（内部审计用，不发布）
         self.assertEqual(set(result["per_source"]["adguard"]), {"a.txt", "b.txt"})
         self.assertEqual(set(result["per_source"]["hosts"]), {"h.hosts"})
-        # merged.adguard：原始行去重（dup.example 只留一次）
-        adg_text = result["merged"]["adguard"]["text"]
-        self.assertEqual(adg_text.count("dup.example"), 1)
-        self.assertIn("||ads.example^", adg_text)
-        self.assertIn("||other.example^", adg_text)
-        # merged.combined：跨类去重（dup.example 在 adguard 和 hosts 都有 → 只留一次）
-        comb_text = result["merged"]["combined"]["text"]
-        self.assertEqual(comb_text.count("dup.example"), 1)
-        self.assertIn("||ads.example^", comb_text)
-        self.assertIn("0.0.0.0 host.example.com", comb_text)
+        # 唯一合并产物：原始行去重后重新转换（dup.example 只留一次）
+        self.assertEqual(set(result["merged"]), {"adguard"})
+        merged = result["merged"]["adguard"]
+        text = merged["text"]
+        self.assertEqual(text.count("dup.example"), 1)
+        self.assertIn("||ads.example^", text)
+        self.assertIn("||other.example^", text)
+        self.assertIn("0.0.0.0 host.example.com", text)
+        self.assertTrue(self._blocked(merged["rules"], "ads.example"))
+        self.assertTrue(self._blocked(merged["rules"], "host.example.com"))
+        self.assertTrue(self._blocked(merged["rules"], "dup.example"))
 
     def test_merge_dedupe_keeps_first(self):
         text = conv._merge_dedupe_texts(["a\nb\na\n! c\n", "b\nc\n"])
@@ -526,7 +472,8 @@ class TestFullTree(unittest.TestCase):
     def test_convert_all_single_source(self):
         result = conv.convert_all(adguard_sources=[], hosts_sources=[("h.hosts", "0.0.0.0 a.example\n")])
         self.assertEqual(result["per_source"]["adguard"], {})
-        self.assertEqual(set(result["merged"]), {"hosts", "combined"})
+        self.assertEqual(set(result["merged"]), {"adguard"})
+        self.assertIn("0.0.0.0 a.example", result["merged"]["adguard"]["text"])
 
     def test_merged_whitelist_applies_globally(self):
         # 源 A 拦截 tracker.example，源 B 单独放行 sub.tracker.example。
@@ -589,26 +536,20 @@ class TestFullTree(unittest.TestCase):
         self.assertFalse(self._blocked(merged, "ads.example"))
         self.assertTrue(self._blocked(merged, "keep.example"))
 
-    def test_merged_three_categories(self):
-        # 用户确认的设计：合并去重产物恰分三类（hosts / adguard / 两者一起）
+    def test_merged_single_product(self):
+        # 只发布一个合并产物：merged/adguard（原生 txt + 编译 srs）
         result = conv.convert_all(
             adguard_sources=[("a.txt", "||ads.example^\n")],
             hosts_sources=[("h.hosts", "0.0.0.0 host.example.com\n")])
         merged = result["merged"]
-        # ① 恰有三类
-        self.assertEqual(set(merged), {"adguard", "hosts", "combined"})
-        # ② 每类都有原始文本 + 转换规则
-        for name, m in merged.items():
-            self.assertIn("text", m, f"{name} 缺 text")
-            self.assertIn("rules", m, f"{name} 缺 rules")
-        # ③ 内容按语法源归类：adguard 类只含 adguard 源行，hosts 类只含 hosts 源行
-        self.assertIn("||ads.example^", merged["adguard"]["text"])
-        self.assertNotIn("0.0.0.0", merged["adguard"]["text"])
-        self.assertIn("0.0.0.0 host.example.com", merged["hosts"]["text"])
-        self.assertNotIn("||", merged["hosts"]["text"])
-        # ④ combined 含两者
-        self.assertIn("||ads.example^", merged["combined"]["text"])
-        self.assertIn("0.0.0.0 host.example.com", merged["combined"]["text"])
+        self.assertEqual(set(merged), {"adguard"})
+        m = merged["adguard"]
+        self.assertIn("text", m)
+        self.assertIn("rules", m)
+        self.assertIn("||ads.example^", m["text"])
+        self.assertIn("0.0.0.0 host.example.com", m["text"])
+        self.assertTrue(self._blocked(m["rules"], "ads.example"))
+        self.assertTrue(self._blocked(m["rules"], "host.example.com"))
 
     def test_write_output_tree(self):
         # CLI 目录树集成：sources/merged 生成；单源规则集已按用户要求移除
@@ -625,10 +566,6 @@ class TestFullTree(unittest.TestCase):
             self.assertEqual(files, [
                 "merged/adguard/adguard.json",
                 "merged/adguard/adguard.txt",
-                "merged/combined/combined.json",
-                "merged/combined/combined.txt",
-                "merged/hosts/hosts.json",
-                "merged/hosts/hosts.txt",
                 "sources/adguard/a-rules.txt",
                 "sources/hosts/h.hosts",
             ])
