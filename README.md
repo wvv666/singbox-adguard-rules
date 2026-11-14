@@ -25,13 +25,11 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 <summary><b>🚫 合并规则集（推荐）</b></summary>
 <br>
 
-| 规则集 | 说明 | 📥 GitHub 直链 | 🚀 国内加速 |
+| 格式 | 说明 | 📥 GitHub 直链 | 🚀 国内加速 |
 | :---- | :---- | :---- | :---- |
-| `adguard` | 全部上游源合并去重（推荐） | [adguard.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) | [adguard.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) |
-
-合并去重后的 AdGuard 原生文本：[adguard.txt](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.txt)
-
-sing-box 源格式 JSON：[adguard.json](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.json)
+| `adguard.srs` | sing-box 编译订阅（推荐） | [adguard.srs](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) | [adguard.srs](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.srs) |
+| `adguard.txt` | AdGuard 原生文本（合并去重） | [adguard.txt](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.txt) | [adguard.txt](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.txt) |
+| `adguard.json` | sing-box 源格式 JSON | [adguard.json](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.json) | [adguard.json](https://ghfast.top/raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.json) |
 
 </details>
 
