@@ -685,7 +685,8 @@ def write_output_tree(out_dir: Path, result: dict,
         d.mkdir(parents=True, exist_ok=True)
         (d / f"{name}.txt").write_text(m["text"], encoding="utf-8")
         (d / f"{name}.json").write_text(
-            json.dumps({"version": 3, "rules": m["rules"]}, indent=2, ensure_ascii=False),
+            json.dumps({"version": 3, "rules": m["rules"]},
+                       separators=(",", ":"), ensure_ascii=False),
             encoding="utf-8")
         print(f"written: {d / f'{name}.txt'} / {d / f'{name}.json'}", file=sys.stderr)
 

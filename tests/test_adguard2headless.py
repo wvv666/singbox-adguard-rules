@@ -569,6 +569,10 @@ class TestFullTree(unittest.TestCase):
                 "sources/adguard/a-rules.txt",
                 "sources/hosts/h.hosts",
             ])
+            data = json.loads((out / "merged" / "adguard" / "adguard.json")
+                              .read_text(encoding="utf-8"))
+            self.assertEqual(data["version"], 3)
+            self.assertTrue(data["rules"])
 
     def test_convert_all_no_empty_product(self):
         # 纯注释输入：不生成空 merged 产物

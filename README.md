@@ -31,6 +31,8 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 
 合并去重后的 AdGuard 原生文本：[adguard.txt](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.txt)
 
+sing-box 源格式 JSON：[adguard.json](https://raw.githubusercontent.com/wvv666/singbox-adguard-rules/main/work/out/merged/adguard/adguard.json)
+
 </details>
 
 ## 📚 上游列表
@@ -53,7 +55,7 @@ sing-box 广告拦截规则集：自动同步上游规则、合并去重、编�
 
 ### 维护说明
 
-- **仓库体积策略**：只提交订阅产物 `.srs` 与合并后的可读规则 `merged/**/*.txt`；作为编译输入的中间 JSON 和上游原件不入库（早期历史提交中仍保留）。
+- **仓库体积策略**：提交 `merged/adguard/` 下的 `.srs`、原生 `.txt` 与源格式 `.json`；仅上游原件副本不入库。
 - **冗余剪枝**：合并时会删掉「已被同条件 `domain_suffix` 覆盖」的精确域名（如 `a.example.com` 已被 `example.com` 覆盖），拦截范围不变但产物更小。
 - **自动防退化**：CI 校验 sing-box 二进制 SHA-256（读取 Release 资产 digest）；若合并规则数骤降超过 20%，判定上游源异常并拒绝提交。
 
