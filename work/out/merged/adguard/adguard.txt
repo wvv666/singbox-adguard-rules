@@ -307898,10 +307898,10 @@
 ! Title: 酷安广告规则
 ! Homepage: https://github.com/qq5460168/AD886
 ! by: 酷安@那个谁520
-! Last Updated: 2026-11-14 12:57:01（北京时间）
-! Total count: 17307
+! Last Updated: 2026-11-15 12:50:29（北京时间）
+! Total count: 17314
 ! ────────────── 来源汇总 ──────────────
-!      8118 条  补充(Who520)
+!      8119 条  补充(Who520)
 !      2999 条  大萌主
 !      2199 条  本地补充(data/rules/adblock.txt)
 !       342 条  茯苓
@@ -307911,13 +307911,13 @@
 !        55 条  周木木
 !        46 条  晴雅
 !       170 条  DD
-!       140 条  AdRules DNS Filter
+!       146 条  AdRules DNS Filter
 !         2 条  liwenjie119
 ! ────────────────────────────────────────
 ! ==============================================
 ! 📋 规则来源：补充(Who520)
 ! 🔗 原始地址：https://raw.githubusercontent.com/qq5460168/Who520/refs/heads/main/Other%20rules/Replenish.txt#补充
-! 📊 本区规则：8118 条
+! 📊 本区规则：8119 条
 ||-normal-lq.zijieapi.com^
 ||0.r.msn.com^
 ||00880808.com^
@@ -317329,6 +317329,11 @@
 ! 📋 规则来源：秋风规则
 ! 🔗 原始地址：https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt
 ! 📊 本区规则：466 条
+||client-upload.cn-shanghai.log.aliyuncs.com^
+||du-app.cn-hangzhou.log.aliyuncs.com^
+||lf-event-manager.oceanengine.com^
+||shihuo-new.log.shihuocdn.cn^
+||shihuo.log.shihuocdn.cn^
 ! 📋 规则来源：周木木
 ! 🔗 原始地址：https://gitee.com/zjqz/ad-guard-home-dns/raw/master/black-list
 ! 📊 本区规则：55 条
@@ -317512,7 +317517,6 @@
 ||img.zhangilihew.xyz^
 ||jinritemai.com^
 ||lbs.netease.im^
-||lf-event-manager.oceanengine.com^
 ||line.txwlwwvvimg.com^
 ||luckysf.net^
 ||market-ad.oss-accelerate.aliyuncs.com^
@@ -317587,7 +317591,7 @@
 ||zlsdk.1rtb.net^
 ! 📋 规则来源：AdRules DNS Filter
 ! 🔗 原始地址：https://raw.githubusercontent.com/Cats-Team/dns-filter/main/abp.txt
-! 📊 本区规则：140 条
+! 📊 本区规则：146 条
 ||ad.gamebox.360.cn^
 ||ad.smaato.net^
 ||ad1.xiaomi.com^
